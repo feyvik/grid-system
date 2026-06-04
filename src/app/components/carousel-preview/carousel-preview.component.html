@@ -1,38 +1,44 @@
 @if (!images.length) {
   <div class="carousel-empty" (click)="onCarouselClick($event)">
-    <span class="carousel-empty-icon">▦</span>
+    <span class="carousel-empty-icon">&#9638;</span>
     <span>No images yet — select this section to upload</span>
   </div>
 } @else if (config.showFocusedCenter) {
   <div class="carousel-focused" (click)="onCarouselClick($event)">
     <div class="carousel-main">
-      <img class="carousel-main-img"
-           [src]="images[focusedIndex()].src"
-           [alt]="images[focusedIndex()].caption || 'Slide ' + (focusedIndex() + 1)" />
-      <button type="button" class="carousel-arrow carousel-arrow--left" (click)="prev(); $event.stopPropagation()">&#8249;</button>
-      <button type="button" class="carousel-arrow carousel-arrow--right" (click)="next(); $event.stopPropagation()">&#8250;</button>
+      @if (focusedImage; as fi) {
+        <img class="carousel-main-img"
+             [src]="fi.src"
+             [alt]="fi.caption || ('Slide ' + (focusedIndex() + 1))" />
+      }
+      <button type="button" class="carousel-arrow carousel-arrow--left"
+              (click)="prev(); $event.stopPropagation()">&#8249;</button>
+      <button type="button" class="carousel-arrow carousel-arrow--right"
+              (click)="next(); $event.stopPropagation()">&#8250;</button>
     </div>
     <div class="carousel-thumbs">
       @for (img of images; track img.id; let i = $index) {
         <img class="carousel-thumb"
              [class.active]="focusedIndex() === i"
              [src]="img.src"
-             [alt]="img.caption || 'Thumb ' + (i + 1)"
+             [alt]="img.caption || ('Thumb ' + (i + 1))"
              (click)="setFocused(i); $event.stopPropagation()" />
       }
     </div>
   </div>
 } @else {
   <div class="carousel-strip" (click)="onCarouselClick($event)">
-    <button type="button" class="carousel-arrow carousel-arrow--left" (click)="prev(); $event.stopPropagation()">&#8249;</button>
+    <button type="button" class="carousel-arrow carousel-arrow--left"
+            (click)="prev(); $event.stopPropagation()">&#8249;</button>
     <div class="carousel-strip-inner">
       @for (img of images; track img.id; let i = $index) {
         <img class="carousel-strip-img"
              [src]="img.src"
-             [alt]="img.caption || 'Slide ' + (i + 1)"
+             [alt]="img.caption || ('Slide ' + (i + 1))"
              [class.active]="focusedIndex() === i" />
       }
     </div>
-    <button type="button" class="carousel-arrow carousel-arrow--right" (click)="next(); $event.stopPropagation()">&#8250;</button>
+    <button type="button" class="carousel-arrow carousel-arrow--right"
+            (click)="next(); $event.stopPropagation()">&#8250;</button>
   </div>
 }

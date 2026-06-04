@@ -21,6 +21,11 @@ export class CarouselPreviewComponent implements OnChanges, OnDestroy {
   focusedIndex = signal(0);
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
+  get focusedImage() {
+    const imgs = this.images;
+    return imgs.length > 0 ? imgs[this.focusedIndex() % imgs.length] : null;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['section']) {
       this.resetAutoScroll();
