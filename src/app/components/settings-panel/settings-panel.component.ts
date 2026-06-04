@@ -1,165 +1,143 @@
-import { Component, computed, effect, inject, PLATFORM_ID, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorService } from '../../services/editor.service';
-import type { CanvasElement } from '../../models/page.model';
+import { SectionEditorComponent } from '../section-editor/section-editor.component';
+import type { CanvasElement, GlobalColors } from '../../models/page.model';
+
+type PanelTab = 'element' | 'page' | 'colors';
 
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, SectionEditorComponent],
   templateUrl: './settings-panel.component.html',
   styleUrl: './settings-panel.component.css',
 })
 export class SettingsPanelComponent {
-  protected editorService = inject(EditorService);
+  protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
-  activeTab = signal<'element' | 'page' | 'headerfooter'>('element');
+  activeTab = signal<PanelTab>('page');
 
-  // The "current element" is page element or footer element depending on mode
-  currentElement = computed(() => {
-    if (this.editorService.editingMode() === 'footer') {
-      return this.editorService.selectedFooterElement();
-    }
-    return this.editorService.selectedElement();
-  });
+  activePage = this.es.activePage;
 
-  activePage = this.editorService.activePage;
+  readonly colorKeys: { key: keyof GlobalColors; label: string }[] = [
+    { key: 'primary', label: 'Primary' },
+    { key: 'secondary', label: 'Secondary' },
+    { key: 'accent1', label: 'Accent 1' },
+    { key: 'accent2', label: 'Accent 2' },
+    { key: 'accent3', label: 'Accent 3' },
+    { key: 'accent4', label: 'Accent 4' },
+  ];
 
   constructor() {
-    // Auto-switch to header/footer tab when mode changes
     effect(() => {
-      const mode = this.editorService.editingMode();
-      if (mode === 'header' || mode === 'footer') {
-        this.activeTab.set('headerfooter');
-      }
-    });
-    // Auto-switch to element tab when an element is selected
-    effect(() => {
-      if (this.currentElement()) {
-        this.activeTab.set('element');
-      }
+      if (this.es.selectedElement()) this.activeTab.set('element');
     });
   }
 
-  // ── Unified element update ────────────────────────────────────────────────
+  // ── Element tab ────────────────────────────────────────────
 
-  private updateCurrentElement(id: string, changes: Partial<CanvasElement>): void {
-    if (this.editorService.editingMode() === 'footer') {
-      this.editorService.updateFooterElement(id, changes);
-    } else {
-      this.editorService.updateElement(id, changes);
-    }
-  }
+  get el() { return this.es.selectedElement(); }
 
   updateContent(v: string): void {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { content: v });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { content: v });
   }
 
-  get color(): string { return this.currentElement()?.styles?.color ?? '#000000'; }
+  get color(): string { return this.el?.styles?.color ?? '#000000'; }
   set color(v: string) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { styles: { ...el.styles, color: v } });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, color: v, useGlobalColor: null } });
   }
 
   get backgroundColor(): string {
-    const bg = this.currentElement()?.styles?.backgroundColor;
+    const bg = this.el?.styles?.backgroundColor;
     return !bg || bg === 'transparent' ? '#ffffff' : bg;
   }
   set backgroundColor(v: string) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { styles: { ...el.styles, backgroundColor: v } });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, backgroundColor: v, useGlobalBackground: null } });
   }
 
-  get fontSize(): number { return this.currentElement()?.styles?.fontSize ?? 16; }
+  get fontSize(): number { return this.el?.styles?.fontSize ?? 16; }
   set fontSize(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { styles: { ...el.styles, fontSize: Number(v) } });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, fontSize: Number(v) } });
   }
 
-  get borderRadius(): number { return this.currentElement()?.styles?.borderRadius ?? 0; }
+  get borderRadius(): number { return this.el?.styles?.borderRadius ?? 0; }
   set borderRadius(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { styles: { ...el.styles, borderRadius: Number(v) } });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, borderRadius: Number(v) } });
   }
 
-  get elWidth(): number { return this.currentElement()?.width ?? 4; }
+  get elWidth(): number { return this.el?.width ?? 4; }
   set elWidth(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { width: Math.max(2, Number(v)) });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { width: Math.max(2, Number(v)) });
   }
 
-  get elHeight(): number { return this.currentElement()?.height ?? 2; }
+  get elHeight(): number { return this.el?.height ?? 2; }
   set elHeight(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { height: Math.max(2, Number(v)) });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { height: Math.max(2, Number(v)) });
   }
 
-  get elX(): number { return this.currentElement()?.x ?? 0; }
+  get elX(): number { return this.el?.x ?? 0; }
   set elX(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { x: Math.max(0, Number(v)) });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { x: Math.max(0, Number(v)) });
   }
 
-  get elY(): number { return this.currentElement()?.y ?? 0; }
+  get elY(): number { return this.el?.y ?? 0; }
   set elY(v: number) {
-    const el = this.currentElement();
-    if (el) this.updateCurrentElement(el.id, { y: Math.max(0, Number(v)) });
+    const e = this.el;
+    if (e) this.es.updateElement(e.id, { y: Math.max(0, Number(v)) });
   }
 
   deleteCurrentElement(): void {
-    const mode = this.editorService.editingMode();
-    if (mode === 'footer') {
-      const id = this.editorService.selectedFooterElementId();
-      if (id) this.editorService.deleteFooterElement(id);
-    } else {
-      const id = this.editorService.selectedElementId();
-      if (id) this.editorService.deleteElement(id);
-    }
+    const id = this.es.selectedElementId();
+    if (id) this.es.deleteElement(id);
   }
 
   triggerImageUpload(): void {
-    const el = this.currentElement();
-    if (!el || !isPlatformBrowser(this.platformId)) return;
+    const e = this.el;
+    if (!e || !isPlatformBrowser(this.platformId)) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
+    input.onchange = (ev) => {
+      const file = (ev.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => this.updateCurrentElement(el.id, { src: reader.result as string });
+      reader.onload = () => this.es.updateElement(e.id, { src: reader.result as string });
       reader.readAsDataURL(file);
     };
     input.click();
   }
 
-  // ── Page tab ──────────────────────────────────────────────────────────────
+  // ── Page tab ──────────────────────────────────────────────
 
   get pageTitle(): string { return this.activePage().title; }
-  set pageTitle(v: string) { this.editorService.updatePageTitle(this.activePage().id, v); }
+  set pageTitle(v: string) { this.es.updatePageTitle(this.activePage().id, v); }
 
   get pageSlug(): string { return this.activePage().slug; }
-  set pageSlug(v: string) { this.editorService.updatePageSlug(this.activePage().id, v); }
-
-  get bgColor(): string {
-    const bg = this.activePage().background;
-    return bg.type === 'color' ? bg.value : '#ffffff';
-  }
-  set bgColor(v: string) {
-    this.editorService.updatePageBackground(this.activePage().id, { type: 'color', value: v });
-  }
+  set pageSlug(v: string) { this.es.updatePageSlug(this.activePage().id, v); }
 
   get bgType(): 'color' | 'image' { return this.activePage().background.type; }
 
+  get bgColor(): string {
+    return this.activePage().background.type === 'color' ? this.activePage().background.value : '#ffffff';
+  }
+  set bgColor(v: string) {
+    this.es.updatePageBackground(this.activePage().id, { type: 'color', value: v });
+  }
+
   selectBgType(type: 'color' | 'image'): void {
-    if (type === 'color') {
-      this.editorService.updatePageBackground(this.activePage().id, { type: 'color', value: '#ffffff' });
-    } else {
-      this.editorService.updatePageBackground(this.activePage().id, { type: 'image', value: '' });
-    }
+    this.es.updatePageBackground(this.activePage().id,
+      type === 'color' ? { type: 'color', value: '#ffffff' } : { type: 'image', value: '' });
   }
 
   onBgImageFile(event: Event): void {
@@ -168,63 +146,17 @@ export class SettingsPanelComponent {
     if (!file) return;
     const id = this.activePage().id;
     const reader = new FileReader();
-    reader.onload = () => this.editorService.updatePageBackground(id, { type: 'image', value: reader.result as string });
+    reader.onload = () => this.es.updatePageBackground(id, { type: 'image', value: reader.result as string });
     reader.readAsDataURL(file);
   }
 
-  duplicatePage(): void { this.editorService.duplicatePage(this.activePage().id); }
+  duplicatePage(): void { this.es.duplicatePage(this.activePage().id); }
   deletePage(): void {
-    if (this.editorService.pages().length > 1) this.editorService.deletePage(this.activePage().id);
+    if (this.es.pages().length > 1) this.es.deletePage(this.activePage().id);
   }
 
-  // ── Header/Footer quick settings ──────────────────────────────────────────
+  // ── Global colors tab ────────────────────────────────────
 
-  get hfBgColor(): string {
-    const mode = this.editorService.editingMode();
-    const bg = mode === 'footer'
-      ? this.editorService.activeFooter().background
-      : this.editorService.activeHeader().background;
-    return bg.type === 'color' ? bg.value : '#000000';
-  }
-  set hfBgColor(v: string) {
-    const mode = this.editorService.editingMode();
-    if (mode === 'footer') this.editorService.updateFooter({ background: { type: 'color', value: v } });
-    else this.editorService.updateHeader({ background: { type: 'color', value: v } });
-  }
-
-  get hfActiveColor(): string {
-    const mode = this.editorService.editingMode();
-    return mode === 'footer'
-      ? this.editorService.activeFooter().activeColor
-      : this.editorService.activeHeader().activeColor;
-  }
-  set hfActiveColor(v: string) {
-    const mode = this.editorService.editingMode();
-    if (mode === 'footer') this.editorService.updateFooter({ activeColor: v });
-    else this.editorService.updateHeader({ activeColor: v });
-  }
-
-  get hfDefaultColor(): string {
-    const mode = this.editorService.editingMode();
-    return mode === 'footer'
-      ? this.editorService.activeFooter().defaultColor
-      : this.editorService.activeHeader().defaultColor;
-  }
-  set hfDefaultColor(v: string) {
-    const mode = this.editorService.editingMode();
-    if (mode === 'footer') this.editorService.updateFooter({ defaultColor: v });
-    else this.editorService.updateHeader({ defaultColor: v });
-  }
-
-  get hfEnabled(): boolean {
-    const mode = this.editorService.editingMode();
-    return mode === 'footer'
-      ? this.editorService.activeFooter().enabled
-      : this.editorService.activeHeader().enabled;
-  }
-  toggleHfEnabled(): void {
-    const mode = this.editorService.editingMode();
-    if (mode === 'footer') this.editorService.updateFooter({ enabled: !this.editorService.activeFooter().enabled });
-    else this.editorService.updateHeader({ enabled: !this.editorService.activeHeader().enabled });
-  }
+  getColor(key: keyof GlobalColors): string { return this.es.globalColors()[key]; }
+  setColor(key: keyof GlobalColors, value: string): void { this.es.updateGlobalColor(key, value); }
 }

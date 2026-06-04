@@ -1,172 +1,175 @@
 <div class="settings-panel">
 
-  <!-- Tabs -->
-  <div class="tab-bar">
-    <button type="button" class="tab-btn" [class.active]="activeTab() === 'element'" (click)="activeTab.set('element')">Element</button>
-    <button type="button" class="tab-btn" [class.active]="activeTab() === 'page'" (click)="activeTab.set('page')">Page</button>
-    <button type="button" class="tab-btn" [class.active]="activeTab() === 'headerfooter'" (click)="activeTab.set('headerfooter')">H/F</button>
-  </div>
+  @if (es.selectedSection()) {
+    <app-section-editor />
+  } @else {
 
-  <!-- ── ELEMENT TAB ─────────────────────────────────────── -->
-  @if (activeTab() === 'element') {
-    @if (currentElement(); as el) {
-      <div class="settings-content">
-        <div class="type-badge">{{ el.type }}</div>
+    <div class="tab-bar">
+      <button type="button" class="tab-btn"
+              [class.active]="activeTab() === 'element'"
+              (click)="activeTab.set('element')">Element</button>
+      <button type="button" class="tab-btn"
+              [class.active]="activeTab() === 'page'"
+              (click)="activeTab.set('page')">Page</button>
+      <button type="button" class="tab-btn"
+              [class.active]="activeTab() === 'colors'"
+              (click)="activeTab.set('colors')">Colors</button>
+    </div>
 
-        @if (el.type !== 'image') {
+    <!-- ── ELEMENT TAB ───────────────────────────────── -->
+    @if (activeTab() === 'element') {
+      @if (el; as elem) {
+        <div class="settings-content">
+          <div class="type-badge">{{ elem.type }}</div>
+
+          @if (elem.type === 'text' || elem.type === 'button') {
+            <div class="form-group">
+              <label>Content</label>
+              <input type="text"
+                     [value]="elem.content ?? ''"
+                     (input)="updateContent($any($event.target).value)"
+                     placeholder="Enter content…"
+                     title="Element content" />
+            </div>
+          }
+
+          @if (elem.type === 'image') {
+            <div class="form-group">
+              <label>Image</label>
+              <button type="button" class="upload-btn" (click)="triggerImageUpload()">
+                {{ elem.src ? 'Change Image' : 'Upload Image' }}
+              </button>
+            </div>
+          }
+
+          @if (elem.type !== 'divider' && elem.type !== 'shape') {
+            <div class="form-group">
+              <label>Font Size (px)</label>
+              <input type="number" [(ngModel)]="fontSize" min="8" max="96" step="1" title="Font size" />
+            </div>
+          }
+
           <div class="form-group">
-            <label>Content</label>
-            <input
-              type="text"
-              [value]="currentElement()?.content ?? ''"
-              (input)="updateContent($any($event.target).value)"
-              placeholder="Enter content…"
-              title="Element content"
-            />
+            <label>Text Color</label>
+            <div class="color-row">
+              <input type="color" [(ngModel)]="color" title="Text color" />
+              <span class="color-value">{{ color }}</span>
+            </div>
           </div>
-        }
 
-        @if (el.type === 'image') {
           <div class="form-group">
-            <label>Image</label>
-            <button type="button" class="upload-btn" (click)="triggerImageUpload()">
-              {{ el.src ? 'Change Image' : 'Upload Image' }}
-            </button>
+            <label>Background Color</label>
+            <div class="color-row">
+              <input type="color" [(ngModel)]="backgroundColor" title="Background color" />
+              <span class="color-value">{{ backgroundColor }}</span>
+            </div>
           </div>
-        }
 
-        <div class="form-group">
-          <label>Text Color</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="color" title="Text color" />
-            <span class="color-value">{{ color }}</span>
+          <div class="form-group">
+            <label>Border Radius (px)</label>
+            <input type="number" [(ngModel)]="borderRadius" min="0" max="100" step="1" title="Border radius" />
           </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label>W (grid)</label>
+              <input type="number" [(ngModel)]="elWidth" min="2" max="30" title="Width in grid units" />
+            </div>
+            <div class="form-group half">
+              <label>H (grid)</label>
+              <input type="number" [(ngModel)]="elHeight" min="2" max="30" title="Height in grid units" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label>X</label>
+              <input type="number" [(ngModel)]="elX" min="0" title="X position" />
+            </div>
+            <div class="form-group half">
+              <label>Y</label>
+              <input type="number" [(ngModel)]="elY" min="0" title="Y position" />
+            </div>
+          </div>
+
+          <button type="button" class="delete-btn" (click)="deleteCurrentElement()">Delete Element</button>
         </div>
+      } @else {
+        <div class="empty-state">Select an element on the canvas to edit its properties.</div>
+      }
+    }
 
+    <!-- ── PAGE TAB ──────────────────────────────────── -->
+    @if (activeTab() === 'page') {
+      <div class="settings-content">
+        <div class="form-group">
+          <label>Page Title</label>
+          <input type="text" [(ngModel)]="pageTitle" placeholder="Page title" title="Page title" />
+        </div>
+        <div class="form-group">
+          <label>Slug</label>
+          <input type="text" [(ngModel)]="pageSlug" placeholder="page-slug" title="URL slug" />
+        </div>
+        <div class="form-group toggle-row">
+          <label>Visible to visitors</label>
+          <button type="button" class="toggle-btn"
+                  [class.on]="activePage().enabled"
+                  (click)="es.togglePageEnabled(activePage().id)">
+            {{ activePage().enabled ? 'On' : 'Off' }}
+          </button>
+        </div>
         <div class="form-group">
           <label>Background</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="backgroundColor" title="Background color" />
-            <span class="color-value">{{ backgroundColor }}</span>
+          <div class="bg-type-row">
+            <button type="button" class="bg-type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Color</button>
+            <button type="button" class="bg-type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
           </div>
+          @if (bgType === 'color') {
+            <div class="color-row color-row--mt">
+              <input type="color" [(ngModel)]="bgColor" title="Page background color" />
+              <span class="color-value">{{ bgColor }}</span>
+            </div>
+          }
+          @if (bgType === 'image') {
+            <input type="file" accept="image/*" class="file-input file-input--mt"
+                   title="Background image" aria-label="Background image"
+                   (change)="onBgImageFile($event)" />
+          }
         </div>
-
-        <div class="form-group">
-          <label>Font Size</label>
-          <input type="number" [(ngModel)]="fontSize" min="8" max="96" step="1" title="Font size" />
+        <div class="page-actions">
+          <button type="button" class="action-btn" (click)="duplicatePage()">Duplicate Page</button>
+          <button type="button" class="delete-btn"
+                  [disabled]="es.pages().length <= 1"
+                  (click)="deletePage()">Delete Page</button>
         </div>
-
-        <div class="form-group">
-          <label>Border Radius</label>
-          <input type="number" [(ngModel)]="borderRadius" min="0" max="100" step="1" title="Border radius" />
-        </div>
-
-        <div class="form-row">
-          <div class="form-group half">
-            <label>W (grid)</label>
-            <input type="number" [(ngModel)]="elWidth" min="2" max="30" title="Width" />
-          </div>
-          <div class="form-group half">
-            <label>H (grid)</label>
-            <input type="number" [(ngModel)]="elHeight" min="2" max="30" title="Height" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group half">
-            <label>X</label>
-            <input type="number" [(ngModel)]="elX" min="0" title="X position" />
-          </div>
-          <div class="form-group half">
-            <label>Y</label>
-            <input type="number" [(ngModel)]="elY" min="0" title="Y position" />
-          </div>
-        </div>
-
-        <button type="button" class="delete-btn" (click)="deleteCurrentElement()">Delete Element</button>
       </div>
-    } @else {
-      <div class="empty-state">Select an element to edit its properties</div>
     }
-  }
 
-  <!-- ── PAGE TAB ───────────────────────────────────────── -->
-  @if (activeTab() === 'page') {
-    <div class="settings-content">
-      <div class="form-group">
-        <label>Page Title</label>
-        <input type="text" [(ngModel)]="pageTitle" placeholder="Page title" title="Page title" />
-      </div>
-      <div class="form-group">
-        <label>Slug</label>
-        <input type="text" [(ngModel)]="pageSlug" placeholder="page-slug" title="Page slug" />
-      </div>
-      <div class="form-group toggle-row">
-        <label>Visible to visitors</label>
-        <button type="button" class="toggle-btn" [class.on]="activePage().enabled" (click)="editorService.togglePageEnabled(activePage().id)">
-          {{ activePage().enabled ? 'On' : 'Off' }}
-        </button>
-      </div>
-      <div class="form-group">
-        <label>Background</label>
-        <div class="bg-type-row">
-          <button type="button" class="bg-type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Color</button>
-          <button type="button" class="bg-type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
-        </div>
-        @if (bgType === 'color') {
-          <div class="color-row color-row--mt">
-            <input type="color" [(ngModel)]="bgColor" title="Page background color" />
-            <span class="color-value">{{ bgColor }}</span>
+    <!-- ── GLOBAL COLORS TAB ─────────────────────────── -->
+    @if (activeTab() === 'colors') {
+      <div class="settings-content">
+        <p class="colors-subtitle">These defaults apply to all elements unless overridden individually.</p>
+        @for (c of colorKeys; track c.key) {
+          <div class="form-group">
+            <label>{{ c.label }}</label>
+            <div class="color-row">
+              <input type="color" title="Global color"
+                     [attr.aria-label]="c.label + ' color'"
+                     [value]="getColor(c.key)"
+                     (input)="setColor(c.key, $any($event.target).value)" />
+              <input type="text"
+                     title="Hex value"
+                     [attr.aria-label]="c.label + ' hex'"
+                     [value]="getColor(c.key)"
+                     (change)="setColor(c.key, $any($event.target).value)"
+                     maxlength="7"
+                     placeholder="#000000"
+                     class="hex-input" />
+            </div>
           </div>
         }
-        @if (bgType === 'image') {
-          <input type="file" accept="image/*" class="file-input file-input--mt" title="Page background image" aria-label="Page background image" (change)="onBgImageFile($event)" />
-        }
       </div>
-      <div class="page-actions">
-        <button type="button" class="action-btn" (click)="duplicatePage()">Duplicate Page</button>
-        <button type="button" class="delete-btn" [disabled]="editorService.pages().length <= 1" (click)="deletePage()">Delete Page</button>
-      </div>
-    </div>
-  }
+    }
 
-  <!-- ── HEADER/FOOTER TAB ────────────────────────────── -->
-  @if (activeTab() === 'headerfooter') {
-    <div class="settings-content">
-      <div class="type-badge">
-        {{ editorService.editingMode() === 'footer' ? 'Footer' : 'Header' }}
-      </div>
-
-      <div class="form-group">
-        <label>Background Color</label>
-        <div class="color-row">
-          <input type="color" [(ngModel)]="hfBgColor" title="Background color" />
-          <span class="color-value">{{ hfBgColor }}</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Active Link Color</label>
-        <div class="color-row">
-          <input type="color" [(ngModel)]="hfActiveColor" title="Active link color" />
-          <span class="color-value">{{ hfActiveColor }}</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Default Link Color</label>
-        <div class="color-row">
-          <input type="color" [(ngModel)]="hfDefaultColor" title="Default link color" />
-          <span class="color-value">{{ hfDefaultColor }}</span>
-        </div>
-      </div>
-      <div class="form-group toggle-row">
-        <label>Enabled</label>
-        <button type="button" class="toggle-btn" [class.on]="hfEnabled" (click)="toggleHfEnabled()">
-          {{ hfEnabled ? 'On' : 'Off' }}
-        </button>
-      </div>
-      <div class="hf-hint">
-        For full editing, use the canvas above (Header / Footer buttons in toolbar).
-      </div>
-    </div>
   }
 
 </div>
