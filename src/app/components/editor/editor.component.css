@@ -1,0 +1,214 @@
+.editor-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+
+.toolbar {
+  height: 48px;
+  background: #2c3e7a;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.logo {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.page-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.page-tab {
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.page-tab:hover { background: rgba(255, 255, 255, 0.18); color: #ffffff; }
+
+.page-tab.active {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.page-tab.tab-disabled {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.page-tab-rename {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  width: 120px;
+}
+
+.add-page-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.add-page-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+.toolbar-btn:hover { background: rgba(255, 255, 255, 0.2); color: #ffffff; }
+.toolbar-btn.active { background: rgba(255, 255, 255, 0.28); color: #ffffff; }
+
+.save-btn { background: #27e2a8; color: #1a2540; font-weight: 600; }
+.save-btn:hover { background: #22c996; color: #1a2540; }
+
+/* ── Editor body ──────────────────────────────────────────── */
+
+.editor-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.left-panel {
+  width: 220px;
+  min-width: 220px;
+  background: #1e1e2e;
+  color: white;
+  overflow-y: auto;
+  border-right: 1px solid #2e2e3e;
+  flex-shrink: 0;
+}
+
+.canvas-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 24px;
+  gap: 16px;
+  background: #f0f2f5;
+}
+
+.right-panel {
+  width: 260px;
+  min-width: 260px;
+  background: #ffffff;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* ── Preview overlay ──────────────────────────────────────── */
+
+.exit-preview-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1001;
+  padding: 8px 18px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.exit-preview-btn:hover { background: rgba(0, 0, 0, 0.9); }
+
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+/* ── Context menu ─────────────────────────────────────────── */
+
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 997;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 998;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 6px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: #313136;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ctx-item:hover { background: #f5f7ff; }
+.ctx-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.ctx-delete { color: #dc2626; }
+.ctx-delete:hover { background: #fff5f5; }

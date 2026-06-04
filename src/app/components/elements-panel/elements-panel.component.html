@@ -1,0 +1,47 @@
+<div class="panel-group">
+  <div class="group-header">Elements</div>
+  <div class="items-list">
+    @for (item of elementItems; track item.type) {
+      <div class="item-card"
+           draggable="true"
+           (dragstart)="onElementDragStart($event, item.type)">
+        <span class="icon" [innerHTML]="item.icon"></span>
+        <span class="label">{{ item.label }}</span>
+      </div>
+    }
+  </div>
+</div>
+
+<div class="panel-group">
+  <div class="group-header">Sections</div>
+  <div class="items-list">
+    @for (sec of sectionItems; track sec.type) {
+      <div class="item-card"
+           draggable="true"
+           (dragstart)="onSectionDragStart($event, sec.type)">
+        <span class="icon" [innerHTML]="sec.icon"></span>
+        <span class="label">{{ sec.label }}</span>
+      </div>
+    }
+  </div>
+  <button type="button" class="add-custom-btn" (click)="addCustomSection()">+ Add Custom Section</button>
+</div>
+
+<div class="panel-group">
+  <div class="group-header">Global Colors</div>
+  <div class="colors-list">
+    @for (c of colorKeys; track c.key) {
+      <div class="color-row">
+        <span class="color-name">{{ c.label }}</span>
+        <input
+          type="color"
+          class="color-swatch"
+          title="Global color"
+          [attr.aria-label]="c.label + ' color'"
+          [value]="getColor(c.key)"
+          (input)="setColor(c.key, $any($event.target).value)" />
+        <span class="color-hex">{{ getColor(c.key) }}</span>
+      </div>
+    }
+  </div>
+</div>

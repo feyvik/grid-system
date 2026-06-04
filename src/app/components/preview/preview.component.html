@@ -1,0 +1,159 @@
+@if (page(); as p) {
+  <div class="preview-wrapper">
+
+    <!-- Header -->
+    @if (editorService.activeHeader().enabled) {
+      <div
+        class="preview-header"
+        [ngStyle]="getHeaderStyle()"
+        [style.height.px]="editorService.activeHeader().height ?? 64"
+      >
+        @if (editorService.activeHeader().logoSrc) {
+          <img
+            class="preview-header-logo"
+            [src]="editorService.activeHeader().logoSrc"
+            [style.width.px]="editorService.activeHeader().logoWidth ?? 120"
+            [style.height.px]="editorService.activeHeader().logoHeight ?? 40"
+            alt="Header logo"
+          />
+        } @else {
+          <div class="preview-header-logo-ph">Logo</div>
+        }
+        <nav class="preview-header-nav">
+          @for (nl of editorService.activeHeader().navLinks; track nl.pageId) {
+            <a
+              class="preview-nav-link"
+              [style.color]="nl.pageId === p.id
+                ? editorService.activeHeader().activeColor
+                : editorService.activeHeader().defaultColor"
+            >{{ nl.label }}</a>
+          }
+        </nav>
+      </div>
+    }
+
+    <!-- Page content -->
+    <div class="preview-page" [ngStyle]="getPageStyle(p.background)">
+      <!-- Elements area -->
+      <div class="preview-elements-area" [style.minHeight.px]="getElementsAreaHeight(p.elements)">
+        @for (el of p.elements; track el.id) {
+          <div class="preview-element" [ngStyle]="getElementStyle(el)">
+            @if (el.type === 'text') {
+              <span class="el-text">{{ el.content }}</span>
+            } @else if (el.type === 'button') {
+              @if (el.styles?.color) {
+                <span class="el-button">{{ el.content }}</span>
+              } @else {
+                <span class="el-button">{{ el.content }}</span>
+              }
+            } @else if (el.type === 'image') {
+              @if (el.src) {
+                <img class="el-img" [src]="el.src" alt="Page image" />
+              } @else {
+                <div class="el-image-ph">Image</div>
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Sections (stacked) -->
+      @for (sec of p.sections; track sec.id) {
+        <div class="preview-section" [style.height.px]="getSectionHeight(sec.type)">
+          @switch (sec.type) {
+            @case ('attendees') {
+              <div class="sec-people">
+                <h2>Attendees</h2>
+                <div class="sec-grid4">
+                  @for (n of personPlaceholders; track n) {
+                    <div class="sec-person-card">
+                      <div class="sec-avatar"></div>
+                      <span class="sec-person-name">Name Surname</span>
+                      <span class="sec-person-title">Job Title</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            @case ('speakers') {
+              <div class="sec-people">
+                <h2>Speakers</h2>
+                <div class="sec-grid4">
+                  @for (n of personPlaceholders; track n) {
+                    <div class="sec-person-card">
+                      <div class="sec-avatar"></div>
+                      <span class="sec-person-name">Speaker Name</span>
+                      <span class="sec-person-title">Talk Topic</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            @case ('agenda') {
+              <div class="sec-agenda">
+                <h2>Agenda</h2>
+                @for (row of agendaRows; track row.time) {
+                  <div class="sec-agenda-row">
+                    <span class="sec-agenda-time">{{ row.time }}</span>
+                    <span class="sec-agenda-session">{{ row.session }}</span>
+                    <span class="sec-agenda-speaker">{{ row.speaker }}</span>
+                  </div>
+                }
+              </div>
+            }
+            @case ('tickets') {
+              <div class="sec-tickets">
+                <h2>Tickets</h2>
+                <div class="sec-tickets-row">
+                  @for (tier of ticketTiers; track tier.name) {
+                    <div class="sec-ticket-card">
+                      <h3>{{ tier.name }}</h3>
+                      <div class="sec-ticket-price">{{ tier.price }}</div>
+                      <div class="sec-ticket-features">
+                        @for (f of tier.features; track f) {
+                          <div class="sec-ticket-feature">{{ f }}</div>
+                        }
+                      </div>
+                      <button type="button">Buy Now</button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            @case ('carousel') {
+              <div class="sec-carousel">
+                <button type="button" class="carousel-arrow">&#8249;</button>
+                @for (n of carouselItems; track n) {
+                  <div class="carousel-item"></div>
+                }
+                <button type="button" class="carousel-arrow">&#8250;</button>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    @if (editorService.activeFooter().enabled) {
+      <div class="preview-footer" [ngStyle]="getFooterStyle()">
+        @if (editorService.activeFooter().logoSrc) {
+          <img class="preview-footer-logo" [src]="editorService.activeFooter().logoSrc" alt="Footer logo" />
+        }
+        <nav class="preview-footer-nav">
+          @for (nl of editorService.activeFooter().navLinks; track nl.pageId) {
+            <a class="preview-nav-link" [style.color]="editorService.activeFooter().defaultColor">{{ nl.label }}</a>
+          }
+        </nav>
+        @if (editorService.activeFooter().copyrightText) {
+          <span class="preview-footer-copy" [style.color]="editorService.activeFooter().defaultColor">
+            {{ editorService.activeFooter().copyrightText }}
+          </span>
+        }
+      </div>
+    }
+
+  </div>
+} @else {
+  <div class="not-found">Page not found.</div>
+}

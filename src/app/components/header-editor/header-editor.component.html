@@ -1,0 +1,131 @@
+<input #logoInput type="file" accept="image/*" class="hidden-input" title="Upload logo" aria-label="Upload logo" (change)="onLogoFile($event)" />
+
+<div class="header-editor">
+
+  <!-- Live preview -->
+  <div class="preview-bar" [ngStyle]="getPreviewBg()" [style.height.px]="headerHeight">
+    <div class="preview-inner">
+      @if (header.logoSrc) {
+        <img class="preview-logo" [src]="header.logoSrc" [style.width.px]="logoWidth" [style.height.px]="logoHeight" alt="Header logo" />
+      } @else {
+        <div class="preview-logo-placeholder">Logo</div>
+      }
+      <nav class="preview-nav">
+        @for (nl of header.navLinks; track nl.pageId) {
+          <span class="preview-nav-link" [style.color]="defaultColor">{{ nl.label }}</span>
+        }
+      </nav>
+    </div>
+  </div>
+
+  <!-- Edit panel -->
+  <div class="edit-panel">
+
+    <!-- Background -->
+    <section class="edit-section">
+      <h3 class="section-title">Background</h3>
+      <div class="radio-row">
+        <button type="button" class="type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Solid Color</button>
+        <button type="button" class="type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
+      </div>
+      @if (bgType === 'color') {
+        <div class="color-row">
+          <input type="color" [(ngModel)]="bgColor" title="Background color" />
+          <span class="color-hex">{{ bgColor }}</span>
+        </div>
+      } @else {
+        <input type="file" accept="image/*" class="file-input" title="Background image" aria-label="Background image" (change)="onBgImageFile($event)" />
+      }
+    </section>
+
+    <!-- Logo -->
+    <section class="edit-section">
+      <h3 class="section-title">Logo</h3>
+      <button type="button" class="action-btn" (click)="triggerLogoUpload()">
+        {{ header.logoSrc ? 'Change Logo' : 'Upload Logo' }}
+      </button>
+      @if (header.logoSrc) {
+        <div class="logo-preview-row">
+          <img [src]="header.logoSrc" class="logo-thumb" alt="Logo preview" />
+          <button type="button" class="remove-btn" (click)="removeLogo()">Remove</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Width (px)</label>
+            <input type="number" [(ngModel)]="logoWidth" min="20" max="400" title="Logo width" />
+          </div>
+          <div class="form-group">
+            <label>Height (px)</label>
+            <input type="number" [(ngModel)]="logoHeight" min="16" max="200" title="Logo height" />
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Height -->
+    <section class="edit-section">
+      <h3 class="section-title">Height</h3>
+      <div class="form-group">
+        <input type="number" [(ngModel)]="headerHeight" min="32" max="200" title="Header height in px" />
+        <span class="unit-label">px</span>
+      </div>
+    </section>
+
+    <!-- Navigation -->
+    <section class="edit-section">
+      <h3 class="section-title">Navigation</h3>
+      <div class="nav-list">
+        @for (page of editorService.pages(); track page.id) {
+          <div class="nav-row">
+            <input
+              type="checkbox"
+              [id]="'hn-' + page.id"
+              [checked]="isPageInNav(page.id)"
+              (change)="toggleNavPage(page.id)"
+            />
+            <label [for]="'hn-' + page.id" class="nav-page-title">{{ page.title }}</label>
+            @if (isPageInNav(page.id)) {
+              <input
+                type="text"
+                class="nav-label-input"
+                [value]="getNavLabel(page.id)"
+                (input)="setNavLabel(page.id, $any($event.target).value)"
+                placeholder="Label"
+                title="Navigation label"
+              />
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-row color-row-section">
+        <div class="form-group">
+          <label>Active Color</label>
+          <div class="color-row">
+            <input type="color" [(ngModel)]="activeColor" title="Active link color" />
+            <span class="color-hex">{{ activeColor }}</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Default Color</label>
+          <div class="color-row">
+            <input type="color" [(ngModel)]="defaultColor" title="Default link color" />
+            <span class="color-hex">{{ defaultColor }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visibility -->
+    <section class="edit-section">
+      <h3 class="section-title">Visibility</h3>
+      <div class="toggle-row">
+        <span>Show header on all pages</span>
+        <button type="button" class="toggle-btn" [class.on]="enabled" (click)="toggleEnabled()">
+          {{ enabled ? 'On' : 'Off' }}
+        </button>
+      </div>
+    </section>
+
+  </div>
+</div>

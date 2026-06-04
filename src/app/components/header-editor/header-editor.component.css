@@ -1,0 +1,192 @@
+.hidden-input { display: none; }
+
+.header-editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 1200px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Live preview ─────────────────────────────────────────── */
+
+.preview-bar {
+  width: 100%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.preview-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  gap: 32px;
+}
+
+.preview-logo {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.preview-logo-placeholder {
+  width: 80px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preview-nav {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+
+.preview-nav-link {
+  font-size: 14px;
+  font-weight: 500;
+  cursor: default;
+}
+
+/* ── Edit panel ───────────────────────────────────────────── */
+
+.edit-panel {
+  padding: 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #ffffff;
+}
+
+.edit-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-section:last-child { border-bottom: none; }
+
+.section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #888;
+  margin: 0;
+}
+
+/* ── Controls ─────────────────────────────────────────────── */
+
+.radio-row, .form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-row-section { align-items: flex-start; gap: 24px; }
+
+.type-btn {
+  padding: 6px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #f8f8f8;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.type-btn.active { background: #f0f4ff; border-color: #4a73fc; color: #4a73fc; }
+
+.color-row { display: flex; align-items: center; gap: 8px; }
+
+.color-hex { font-size: 12px; color: #888; font-family: monospace; }
+
+input[type='color'] {
+  width: 36px; height: 32px;
+  border: 1px solid #e0e0e0; border-radius: 6px;
+  cursor: pointer; padding: 2px;
+}
+
+.file-input { font-size: 13px; color: #555; }
+
+.action-btn {
+  padding: 8px 16px;
+  background: #f0f4ff;
+  color: #4a73fc;
+  border: 1px solid #c8d5fb;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.15s;
+}
+.action-btn:hover { background: #dce6ff; }
+
+.logo-preview-row {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.logo-thumb { height: 40px; object-fit: contain; border: 1px solid #e0e0e0; border-radius: 4px; padding: 4px; }
+
+.remove-btn {
+  background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+
+.form-group {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.form-group label {
+  font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.form-group input[type='number'] {
+  width: 80px; padding: 6px 8px;
+  border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; outline: none;
+}
+.form-group input[type='number']:focus { border-color: #4a73fc; }
+
+.unit-label { font-size: 12px; color: #888; }
+
+/* ── Navigation ───────────────────────────────────────────── */
+
+.nav-list { display: flex; flex-direction: column; gap: 8px; }
+
+.nav-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.nav-row input[type='checkbox'] { width: 16px; height: 16px; cursor: pointer; }
+
+.nav-page-title { font-size: 13px; color: #313136; min-width: 100px; }
+
+.nav-label-input {
+  padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 5px;
+  font-size: 13px; outline: none; width: 140px;
+}
+.nav-label-input:focus { border-color: #4a73fc; }
+
+/* ── Visibility ───────────────────────────────────────────── */
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px; color: #313136;
+}
+
+.toggle-btn {
+  padding: 5px 20px; border-radius: 20px;
+  border: 1px solid #e0e0e0; background: #f0f0f0; color: #888;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.toggle-btn.on { background: #27e2a8; border-color: #27e2a8; color: #1a3a2a; }

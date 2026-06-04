@@ -1,0 +1,16 @@
+<div class="json-panel">
+  <div class="panel-header">
+    <button type="button" class="toggle-btn" (click)="toggle()">
+      JSON {{ isOpen() ? '▲' : '▼' }}
+    </button>
+    @if (isOpen()) {
+      <button type="button" class="copy-btn" (click)="copyToClipboard()">Copy</button>
+    }
+  </div>
+
+  @if (isOpen()) {
+    <div class="json-body">
+      <pre>{{ pageJSON() }}</pre>
+    </div>
+  }
+</div>

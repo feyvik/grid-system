@@ -1,0 +1,164 @@
+@if (es.isPreviewMode()) {
+  <button type="button" class="exit-preview-btn" (click)="togglePreview()">&#10005; Exit Preview</button>
+  <div class="preview-overlay">
+    <div class="preview-page">
+
+      @if (es.activeHeader().enabled) {
+        <div class="pv-header"
+             [style.height.px]="es.activeHeader().height"
+             [ngStyle]="previewHeaderStyle()">
+          <div class="pv-header-inner">
+            @if (es.activeHeader().logoSrc) {
+              <img class="pv-logo"
+                   [src]="es.activeHeader().logoSrc"
+                   [style.width.px]="es.activeHeader().logoWidth"
+                   [style.height.px]="es.activeHeader().logoHeight"
+                   alt="Logo" />
+            } @else {
+              <div class="pv-logo-ph">Logo</div>
+            }
+            <nav class="pv-nav">
+              @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+                @if (nl.visible) {
+                  <span [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
+                }
+              }
+            </nav>
+          </div>
+        </div>
+      }
+
+      <div class="pv-canvas" [ngStyle]="previewPageStyle()">
+        @for (el of es.elements(); track el.id) {
+          <div class="pv-element" [ngStyle]="previewElementStyle(el)">
+            @if (el.type === 'text') { <span>{{ el.content }}</span> }
+            @if (el.type === 'button') { <div class="pv-btn">{{ el.content }}</div> }
+            @if (el.type === 'image' && el.src) {
+              <img class="pv-img" [src]="el.src" alt="Image" />
+            }
+          </div>
+        }
+      </div>
+
+      @for (sec of es.sections(); track sec.id) {
+        @if (sec.enabled) {
+          <div class="pv-section" [style.height.px]="sec.height">
+            <span class="pv-section-label">{{ sec.label }}</span>
+          </div>
+        }
+      }
+
+      @if (es.activeFooter().enabled) {
+        <div class="pv-footer"
+             [style.height.px]="es.activeFooter().height"
+             [ngStyle]="previewFooterStyle()">
+          <div class="pv-footer-inner">
+            <nav class="pv-nav">
+              @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+                @if (nl.visible) {
+                  <span [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
+                }
+              }
+            </nav>
+            <span class="pv-copy" [style.color]="es.activeFooter().defaultColor">
+              {{ es.activeFooter().copyrightText }}
+            </span>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+}
+
+@if (!es.isPreviewMode()) {
+  <div class="editor-shell">
+
+    <header class="toolbar">
+      <span class="logo">Envlor</span>
+
+      <div class="page-tabs">
+        @for (page of es.pages(); track page.id) {
+          @if (renamingPageId() === page.id) {
+            <input type="text" class="tab-rename-input"
+                   title="Page name"
+                   placeholder="Page name"
+                   [value]="renameValue"
+                   (input)="renameValue = $any($event.target).value"
+                   (blur)="confirmRename(page.id)"
+                   (keydown.enter)="confirmRename(page.id)"
+                   (keydown.escape)="cancelRename()" />
+          } @else {
+            <button type="button" class="page-tab"
+                    [class.active]="es.activePageId() === page.id"
+                    [class.tab-disabled]="!page.enabled"
+                    [title]="!page.enabled ? 'Hidden from visitors' : page.title"
+                    (click)="es.setActivePage(page.id)"
+                    (contextmenu)="onTabContextMenu($event, page.id)">
+              {{ page.title }}
+            </button>
+          }
+        }
+        <button type="button" class="add-tab-btn" title="Add page" (click)="addPage()">+</button>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" class="toolbar-btn"
+                [class.active]="es.editingMode() === 'header'"
+                (click)="es.setEditingMode('header')">Header</button>
+        <button type="button" class="toolbar-btn"
+                [class.active]="es.editingMode() === 'footer'"
+                (click)="es.setEditingMode('footer')">Footer</button>
+        <button type="button" class="toolbar-btn"
+                [class.active]="es.showGrid()"
+                (click)="toggleGrid()">Grid</button>
+        <button type="button" class="toolbar-btn" (click)="togglePreview()">Preview</button>
+        <button type="button" class="toolbar-btn save-btn" (click)="save()">Save</button>
+      </div>
+    </header>
+
+    <div class="editor-body">
+
+      <aside class="left-panel">
+        @if (es.editingMode() === 'page') {
+          <app-elements-panel />
+        }
+        @if (es.editingMode() === 'header') {
+          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">&#8592; Back to Pages</button>
+          <app-header-editor />
+        }
+        @if (es.editingMode() === 'footer') {
+          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">&#8592; Back to Pages</button>
+          <app-footer-editor />
+        }
+      </aside>
+
+      <main class="canvas-area">
+        <app-canvas />
+        <app-json-panel />
+      </main>
+
+      <aside class="right-panel">
+        <app-settings-panel />
+      </aside>
+
+    </div>
+  </div>
+
+  @if (contextMenu()) {
+    <div class="ctx-backdrop" (click)="closeContextMenu()"></div>
+    <div class="context-menu"
+         [style.left.px]="contextMenu()!.x"
+         [style.top.px]="contextMenu()!.y">
+      <button type="button" class="ctx-item" (click)="ctxRename(contextMenu()!.pageId)">Rename</button>
+      <button type="button" class="ctx-item" (click)="ctxDuplicate(contextMenu()!.pageId)">Duplicate</button>
+      <button type="button" class="ctx-item"
+              (click)="ctxToggleEnabled(contextMenu()!.pageId)">
+        {{ isPageEnabled(contextMenu()!.pageId) ? 'Disable' : 'Enable' }}
+      </button>
+      <button type="button" class="ctx-item ctx-delete"
+              [disabled]="es.pages().length <= 1"
+              (click)="ctxDelete(contextMenu()!.pageId)">Delete</button>
+    </div>
+  }
+}

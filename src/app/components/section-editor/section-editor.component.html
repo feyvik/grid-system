@@ -1,0 +1,94 @@
+@if (section(); as sec) {
+  <div class="section-editor">
+    <div class="se-header">
+      <span class="se-type-badge">{{ sec.type }}</span>
+      <span class="se-title">Section Settings</span>
+    </div>
+
+    <div class="se-group">
+      <label class="se-label">Label</label>
+      <input type="text" class="se-input" [(ngModel)]="label" placeholder="Section label" />
+    </div>
+
+    <div class="se-group se-row">
+      <label class="se-label">Enabled</label>
+      <button type="button" class="se-toggle" [class.on]="enabled" (click)="toggleEnabled()">
+        {{ enabled ? 'On' : 'Off' }}
+      </button>
+    </div>
+
+    <div class="se-group">
+      <label class="se-label">Height (px)</label>
+      <input type="number" class="se-input" [(ngModel)]="height" min="100" step="10" />
+    </div>
+
+    <div class="se-group">
+      <label class="se-label">Background Override</label>
+      <div class="se-bg-type-row">
+        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'none'" (click)="setBgOverrideType('none')">None</button>
+        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'color'" (click)="setBgOverrideType('color')">Color</button>
+        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'image'" (click)="setBgOverrideType('image')">Image</button>
+      </div>
+      @if (bgOverrideType === 'color') {
+        <div class="se-color-row">
+          <input type="color" [(ngModel)]="bgOverrideColor" title="Background color" />
+          <span class="se-hex">{{ bgOverrideColor }}</span>
+        </div>
+      }
+      @if (bgOverrideType === 'image') {
+        <input type="file" accept="image/*" class="se-file-input" title="Background image" (change)="onBgImageFile($event)" />
+      }
+    </div>
+
+    @if (sec.type === 'carousel' || sec.type === 'gallery') {
+      <div class="se-divider"></div>
+      <div class="se-group">
+        <label class="se-label">Images</label>
+        <label class="se-upload-btn">
+          Upload Images
+          <input type="file" accept="image/*" multiple hidden (change)="onCarouselImageUpload($event)" />
+        </label>
+        @if (carouselImages.length) {
+          <div class="se-images-grid">
+            @for (img of carouselImages; track img.id) {
+              <div class="se-img-thumb">
+                <img [src]="img.src" [alt]="img.caption || 'Image'" />
+                <button type="button" class="se-img-remove" (click)="removeCarouselImage(img.id)" title="Remove">×</button>
+                <input type="text" class="se-img-caption"
+                       [value]="img.caption || ''"
+                       (change)="updateCaption(img.id, $any($event.target).value)"
+                       placeholder="Caption…" />
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (sec.type === 'carousel') {
+        <div class="se-group">
+          <label class="se-label">Scroll Mode</label>
+          <div class="se-radio-group">
+            <label><input type="radio" [(ngModel)]="scrollMode" value="auto" /> Auto Scroll</label>
+            <label><input type="radio" [(ngModel)]="scrollMode" value="click" /> Click Only</label>
+            <label><input type="radio" [(ngModel)]="scrollMode" value="both" /> Both</label>
+          </div>
+        </div>
+        @if (scrollMode === 'auto' || scrollMode === 'both') {
+          <div class="se-group">
+            <label class="se-label">Auto Interval (seconds)</label>
+            <input type="number" class="se-input" [(ngModel)]="autoInterval" min="1" max="30" step="1" />
+          </div>
+        }
+        <div class="se-group se-row">
+          <label class="se-label">Center focused with thumbnails</label>
+          <input type="checkbox" [(ngModel)]="showFocusedCenter" />
+        </div>
+      }
+    }
+
+    <div class="se-divider"></div>
+    <button type="button" class="se-delete-btn" (click)="deleteSection()">Delete Section</button>
+  </div>
+} @else {
+  <div class="se-empty">Select a section to edit its settings.</div>
+}

@@ -1,0 +1,170 @@
+<input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
+
+<div class="canvas-outer">
+
+  @if (es.activeHeader().enabled) {
+    <div class="header-bar"
+         [ngStyle]="headerStyle()"
+         [style.height.px]="es.activeHeader().height"
+         (click)="clickHeader()">
+      <div class="header-inner">
+        @if (es.activeHeader().logoSrc) {
+          <img class="header-logo"
+               [src]="es.activeHeader().logoSrc"
+               [style.width.px]="es.activeHeader().logoWidth"
+               [style.height.px]="es.activeHeader().logoHeight"
+               alt="Logo" />
+        } @else {
+          <div class="logo-placeholder">Logo</div>
+        }
+        <nav class="header-nav">
+          @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+            @if (nl.visible) {
+              <span class="nav-link" [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
+            }
+          }
+        </nav>
+      </div>
+      <div class="locked-overlay">
+        <span class="lock-icon">&#128274;</span>
+        <span>Click to edit Header</span>
+      </div>
+    </div>
+  }
+
+  <div class="canvas-surface"
+       [ngStyle]="pageBgStyle()"
+       (dragover)="onCanvasDragOver($event)"
+       (dragleave)="onCanvasDragLeave($event)"
+       (drop)="onCanvasDrop($event)"
+       (click)="onCanvasClick()">
+
+    @if (es.showGrid()) {
+      <div class="grid-overlay"></div>
+    }
+
+    <div class="elements-area" [style.minHeight.px]="elementsAreaHeight()">
+      @for (el of es.elements(); track el.id) {
+        <div class="canvas-el"
+             [ngStyle]="getElementStyle(el)"
+             [ngClass]="{ 'selected': es.selectedElementId() === el.id }"
+             draggable="true"
+             (dragstart)="onElementDragStart($event, el)"
+             (click)="onElementClick($event, el.id)">
+
+          @if (el.type === 'text') {
+            <span class="el-text">{{ el.content }}</span>
+          }
+          @if (el.type === 'button') {
+            <div class="el-btn">{{ el.content }}</div>
+          }
+          @if (el.type === 'image') {
+            @if (el.src) {
+              <img class="el-img" [src]="el.src" alt="Image element" />
+            } @else {
+              <div class="el-img-placeholder"><span>&#9638;</span><span>Image</span></div>
+            }
+          }
+          @if (el.type === 'shape') {
+            <div class="el-shape-fill"></div>
+          }
+          @if (el.type === 'divider') {
+            <hr class="el-divider-line" />
+          }
+
+          @if (isContentEmpty(el)) {
+            <div class="empty-dot"></div>
+          }
+
+          @if (es.selectedElementId() === el.id) {
+            <div class="el-type-label">{{ el.type }}</div>
+            @for (h of handles; track h) {
+              <div class="resize-handle"
+                   [ngClass]="'handle-' + h"
+                   (mousedown)="onHandleMouseDown($event, el, h)"></div>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    @for (sec of es.sections(); track sec.id; let i = $index) {
+      @if (isDraggingSection() && es.dragInsertIndex() === i) {
+        <div class="insert-indicator"></div>
+      }
+
+      <div class="section-block"
+           [ngClass]="{ 'sec-selected': es.selectedSectionId() === sec.id, 'sec-disabled': !sec.enabled }"
+           [style.height.px]="sec.height"
+           [ngStyle]="sectionBgStyle(sec)"
+           (click)="onSectionClick($event, sec.id)">
+
+        <div class="sec-header-bar" (click)="$event.stopPropagation()">
+          <span class="sec-drag-handle" title="Drag to reorder">&#9776;</span>
+          <span class="sec-label">{{ sec.label }}</span>
+          <div class="sec-actions">
+            <button type="button" class="sec-btn" title="Edit section" (click)="onSectionEdit($event, sec.id)">&#9998;</button>
+            <button type="button" class="sec-btn" [title]="sec.enabled ? 'Hide' : 'Show'"
+                    (click)="onSectionToggle($event, sec.id)">
+              {{ sec.enabled ? '&#128065;' : '&#128683;' }}
+            </button>
+            <button type="button" class="sec-btn sec-btn--del" title="Delete"
+                    (click)="onSectionDelete($event, sec.id)">&#10005;</button>
+          </div>
+        </div>
+
+        @if (!sec.enabled) {
+          <div class="sec-disabled-overlay">Hidden</div>
+        }
+
+        <div class="sec-body" [style.height.px]="sec.height - 32">
+          @if (sec.type === 'carousel') {
+            <app-carousel-preview [section]="sec" />
+          } @else {
+            <div class="sec-placeholder">
+              <span class="sec-placeholder-text">{{ sec.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (isDraggingSection() && es.dragInsertIndex() === es.sections().length) {
+      <div class="insert-indicator"></div>
+    }
+
+    @if (!es.sections().length && !es.elements().length) {
+      <div class="canvas-empty-hint">
+        Drag elements or sections from the left panel to start building
+      </div>
+    }
+  </div>
+
+  @if (es.activeFooter().enabled) {
+    <div class="footer-bar"
+         [ngStyle]="footerStyle()"
+         [style.height.px]="es.activeFooter().height"
+         (click)="clickFooter()">
+      <div class="footer-inner">
+        @if (es.activeFooter().logoSrc) {
+          <img class="footer-logo" [src]="es.activeFooter().logoSrc" alt="Footer logo" />
+        }
+        <nav class="footer-nav">
+          @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+            @if (nl.visible) {
+              <span class="nav-link" [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
+            }
+          }
+        </nav>
+        <span class="footer-copy" [style.color]="es.activeFooter().defaultColor">
+          {{ es.activeFooter().copyrightText }}
+        </span>
+      </div>
+      <div class="locked-overlay">
+        <span class="lock-icon">&#128274;</span>
+        <span>Click to edit Footer</span>
+      </div>
+    </div>
+  }
+
+</div>
