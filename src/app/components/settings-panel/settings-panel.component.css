@@ -95,9 +95,16 @@
 }
 .action-btn:hover { background: #dce6ff; }
 
-.hf-hint {
-  font-size: 11px; color: #aaa; line-height: 1.5; padding: 4px 0;
+.colors-subtitle {
+  font-size: 11px; color: #aaa; line-height: 1.5; margin: 0 0 4px;
 }
+
+.hex-input {
+  flex: 1; padding: 6px 8px; border: 1px solid #e0e0e0; border-radius: 5px;
+  font-size: 12px; font-family: monospace; outline: none; color: #313136;
+  max-width: 100px;
+}
+.hex-input:focus { border-color: #4a73fc; }
 
 .empty-state {
   flex: 1; display: flex; align-items: center; justify-content: center;

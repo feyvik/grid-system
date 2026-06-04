@@ -1,4 +1,4 @@
-import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser, NgStyle } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CanvasComponent } from '../canvas/canvas.component';

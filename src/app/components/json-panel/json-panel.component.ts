@@ -10,15 +10,13 @@ import { EditorService } from '../../services/editor.service';
   styleUrl: './json-panel.component.css',
 })
 export class JsonPanelComponent {
-  private editorService = inject(EditorService);
+  private es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
-  isOpen = signal(true);
-  pageJSON = computed(() => this.editorService.getPageJSON());
+  isOpen = signal(false);
+  pageJSON = computed(() => this.es.getPageJSON());
 
-  toggle(): void {
-    this.isOpen.update(v => !v);
-  }
+  toggle(): void { this.isOpen.update(v => !v); }
 
   copyToClipboard(): void {
     if (!isPlatformBrowser(this.platformId)) return;

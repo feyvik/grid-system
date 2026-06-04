@@ -9,7 +9,8 @@
       @if (focusedImage; as fi) {
         <img class="carousel-main-img"
              [src]="fi.src"
-             [alt]="fi.caption || ('Slide ' + (focusedIndex() + 1))" />
+             [alt]="fi.caption || ('Slide ' + (focusedIndex() + 1))"
+             [title]="fi.caption || ('Slide ' + (focusedIndex() + 1))" />
       }
       <button type="button" class="carousel-arrow carousel-arrow--left"
               (click)="prev(); $event.stopPropagation()">&#8249;</button>
@@ -22,6 +23,7 @@
              [class.active]="focusedIndex() === i"
              [src]="img.src"
              [alt]="img.caption || ('Thumb ' + (i + 1))"
+             [title]="img.caption || ('Thumb ' + (i + 1))"
              (click)="setFocused(i); $event.stopPropagation()" />
       }
     </div>
@@ -35,6 +37,7 @@
         <img class="carousel-strip-img"
              [src]="img.src"
              [alt]="img.caption || ('Slide ' + (i + 1))"
+             [title]="img.caption || ('Slide ' + (i + 1))"
              [class.active]="focusedIndex() === i" />
       }
     </div>
