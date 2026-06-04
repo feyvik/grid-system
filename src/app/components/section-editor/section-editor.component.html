@@ -1,94 +1,316 @@
+<input #slotInput type="file" accept="image/*" hidden (change)="onSlotFileSelected($event)" />
+<input #uploadAllInput type="file" accept="image/*" multiple hidden (change)="uploadAll($event)" />
+<input #galleryInput type="file" accept="image/*" multiple hidden (change)="uploadGalleryImages($event)" />
+
 @if (section(); as sec) {
   <div class="section-editor">
-    <div class="se-header">
-      <span class="se-type-badge">{{ sec.type }}</span>
-      <span class="se-title">Section Settings</span>
+
+    <!-- Back button -->
+    <button type="button" class="back-btn" (click)="es.selectSection(null)">← Back</button>
+
+    <!-- Type badge -->
+    <div class="type-badge">{{ sec.type }}</div>
+
+    <!-- Label -->
+    <div class="field-group">
+      <label class="field-label">Label</label>
+      <input type="text" class="field-input" [value]="sec.label"
+             (input)="updateLabel($any($event.target).value)" />
     </div>
 
-    <div class="se-group">
-      <label class="se-label">Label</label>
-      <input type="text" class="se-input" [(ngModel)]="label" placeholder="Section label" />
+    <!-- Height -->
+    <div class="field-group">
+      <label class="field-label">Height (px)</label>
+      <input type="number" class="field-input" [value]="sec.height" min="100"
+             (input)="updateHeight(+$any($event.target).value)" />
     </div>
 
-    <div class="se-group se-row">
-      <label class="se-label">Enabled</label>
-      <button type="button" class="se-toggle" [class.on]="enabled" (click)="toggleEnabled()">
-        {{ enabled ? 'On' : 'Off' }}
-      </button>
-    </div>
-
-    <div class="se-group">
-      <label class="se-label">Height (px)</label>
-      <input type="number" class="se-input" [(ngModel)]="height" min="100" step="10" />
-    </div>
-
-    <div class="se-group">
-      <label class="se-label">Background Override</label>
-      <div class="se-bg-type-row">
-        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'none'" (click)="setBgOverrideType('none')">None</button>
-        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'color'" (click)="setBgOverrideType('color')">Color</button>
-        <button type="button" class="se-type-btn" [class.active]="bgOverrideType === 'image'" (click)="setBgOverrideType('image')">Image</button>
+    <!-- Width -->
+    <div class="field-group">
+      <label class="field-label">Width</label>
+      <div class="width-btns">
+        <button type="button" class="width-btn" [class.active]="sec.width === 'full'"
+                (click)="setWidth('full')">Full Width</button>
+        <button type="button" class="width-btn" [class.active]="sec.width === 'half'"
+                (click)="setWidth('half')">Half</button>
+        <button type="button" class="width-btn" [class.active]="sec.width === 'third'"
+                (click)="setWidth('third')">One Third</button>
       </div>
-      @if (bgOverrideType === 'color') {
-        <div class="se-color-row">
-          <input type="color" [(ngModel)]="bgOverrideColor" title="Background color" />
-          <span class="se-hex">{{ bgOverrideColor }}</span>
+    </div>
+
+    <!-- Background -->
+    <div class="field-group">
+      <label class="field-label">Background</label>
+      <div class="radio-row">
+        <label><input type="radio" name="bg" [checked]="!sec.backgroundOverride"
+                      (change)="setBgNone()" /> None</label>
+        <label><input type="radio" name="bg" [checked]="sec.backgroundOverride?.type === 'color'"
+                      (change)="setBgColor('#ffffff')" /> Color</label>
+        <label><input type="radio" name="bg" [checked]="sec.backgroundOverride?.type === 'image'"
+                      (change)="setBgColor('image')" /> Image</label>
+      </div>
+      @if (sec.backgroundOverride?.type === 'color') {
+        <input type="color" class="color-input"
+               [value]="sec.backgroundOverride!.value"
+               (input)="setBgColor($any($event.target).value)" />
+      }
+      @if (sec.backgroundOverride?.type === 'image') {
+        <input type="file" accept="image/*" (change)="setBgImage($event)" />
+      }
+    </div>
+
+    <!-- Enable/Disable -->
+    <div class="field-group field-row">
+      <label class="field-label">Visible</label>
+      <input type="checkbox" [checked]="sec.enabled" (change)="toggleEnabled()" />
+    </div>
+
+    <!-- Mini elements panel -->
+    <div class="subsection-heading">Elements <span class="hint">Drag into section</span></div>
+    <div class="mini-elements-panel">
+      @for (et of elementTypes; track et.type) {
+        <div class="mini-el-item" draggable="true" (dragstart)="onElementDragStart($event, et.type)">
+          <span class="mini-el-icon">{{ et.icon }}</span>
+          <span>{{ et.label }}</span>
         </div>
       }
-      @if (bgOverrideType === 'image') {
-        <input type="file" accept="image/*" class="se-file-input" title="Background image" (change)="onBgImageFile($event)" />
-      }
     </div>
 
-    @if (sec.type === 'carousel' || sec.type === 'gallery') {
-      <div class="se-divider"></div>
-      <div class="se-group">
-        <label class="se-label">Images</label>
-        <label class="se-upload-btn">
-          Upload Images
-          <input type="file" accept="image/*" multiple hidden (change)="onCarouselImageUpload($event)" />
-        </label>
-        @if (carouselImages.length) {
-          <div class="se-images-grid">
-            @for (img of carouselImages; track img.id) {
-              <div class="se-img-thumb">
-                <img [src]="img.src" [alt]="img.caption || 'Image'" />
-                <button type="button" class="se-img-remove" (click)="removeCarouselImage(img.id)" title="Remove">×</button>
-                <input type="text" class="se-img-caption"
-                       [value]="img.caption || ''"
-                       (change)="updateCaption(img.id, $any($event.target).value)"
-                       placeholder="Caption…" />
+    <!-- ── CAROUSEL ── -->
+    @if (sec.type === 'carousel') {
+      <div class="subsection-heading">
+        Images
+        <span class="count-badge">{{ carouselImages.length }}</span>
+      </div>
+
+      <button type="button" class="upload-btn"
+              (click)="uploadAllInput.nativeElement.click()">⬆ Upload All</button>
+
+      <!-- Large slot -->
+      <div class="large-slot" (click)="onSlotClick(0)">
+        @if (getImageAtSlot(0); as img) {
+          <div class="slot-img-wrap">
+            <img [src]="img.src" alt="" class="slot-img" />
+            <button type="button" class="slot-remove"
+                    (click)="$event.stopPropagation(); removeCarouselImage(img.id)">×</button>
+          </div>
+          <input type="text" class="caption-input" placeholder="Caption..."
+                 [value]="img.caption ?? ''"
+                 (input)="updateCaption(img.id, $any($event.target).value)" />
+        } @else {
+          <div class="slot-empty">
+            <span>🖼</span><span>Click to upload main image</span>
+          </div>
+        }
+      </div>
+
+      <!-- Thumbnail slots -->
+      <div class="thumb-slots">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="thumb-slot" (click)="onSlotClick(i)">
+            @if (getImageAtSlot(i); as img) {
+              <div class="slot-img-wrap">
+                <img [src]="img.src" alt="" class="slot-img" />
+                <button type="button" class="slot-remove"
+                        (click)="$event.stopPropagation(); removeCarouselImage(img.id)">×</button>
               </div>
+            } @else {
+              <div class="slot-empty">🖼</div>
             }
           </div>
         }
       </div>
 
-      @if (sec.type === 'carousel') {
-        <div class="se-group">
-          <label class="se-label">Scroll Mode</label>
-          <div class="se-radio-group">
-            <label><input type="radio" [(ngModel)]="scrollMode" value="auto" /> Auto Scroll</label>
-            <label><input type="radio" [(ngModel)]="scrollMode" value="click" /> Click Only</label>
-            <label><input type="radio" [(ngModel)]="scrollMode" value="both" /> Both</label>
-          </div>
+      <!-- Captions for thumbnails -->
+      @for (img of carouselImages.slice(1); track img.id) {
+        <div class="caption-row">
+          <span class="caption-num">#{{ img.order + 1 }}</span>
+          <input type="text" class="caption-input" placeholder="Caption..."
+                 [value]="img.caption ?? ''"
+                 (input)="updateCaption(img.id, $any($event.target).value)" />
         </div>
-        @if (scrollMode === 'auto' || scrollMode === 'both') {
-          <div class="se-group">
-            <label class="se-label">Auto Interval (seconds)</label>
-            <input type="number" class="se-input" [(ngModel)]="autoInterval" min="1" max="30" step="1" />
-          </div>
+      }
+
+      <div class="subsection-heading">Scroll Behavior</div>
+      <div class="radio-col">
+        <label><input type="radio" name="scroll" [checked]="carouselCfg.scrollMode === 'auto'"
+                      (change)="updateScrollMode('auto')" /> Auto Scroll</label>
+        <label><input type="radio" name="scroll" [checked]="carouselCfg.scrollMode === 'click'"
+                      (change)="updateScrollMode('click')" /> Click Only</label>
+        <label><input type="radio" name="scroll" [checked]="carouselCfg.scrollMode === 'both'"
+                      (change)="updateScrollMode('both')" /> Both</label>
+      </div>
+      @if (carouselCfg.scrollMode !== 'click') {
+        <div class="field-group">
+          <label class="field-label">Interval (seconds)</label>
+          <input type="number" class="field-input" min="1" max="30"
+                 [value]="carouselCfg.autoScrollInterval"
+                 (input)="updateCarouselField('autoScrollInterval', +$any($event.target).value)" />
+        </div>
+      }
+
+      <div class="subsection-heading">Image Sizes</div>
+      <div class="field-group">
+        <label class="field-label">Large Image Height (px)</label>
+        <input type="number" class="field-input" min="100"
+               [value]="carouselCfg.largeImageHeight"
+               (input)="updateCarouselField('largeImageHeight', +$any($event.target).value)" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Thumbnail Height (px)</label>
+        <input type="number" class="field-input" min="40"
+               [value]="carouselCfg.thumbnailHeight"
+               (input)="updateCarouselField('thumbnailHeight', +$any($event.target).value)" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Thumbnail Width (px)</label>
+        <input type="number" class="field-input" min="40"
+               [value]="carouselCfg.thumbnailWidth"
+               (input)="updateCarouselField('thumbnailWidth', +$any($event.target).value)" />
+      </div>
+    }
+
+    <!-- ── SPEAKER CARDS / ATTENDEES ── -->
+    @if (sec.type === 'speaker-cards' || sec.type === 'attendees') {
+      <div class="subsection-heading">Layout</div>
+      <div class="field-group">
+        <label class="field-label">Columns</label>
+        <select class="field-input" [value]="getCustom('columns', 3)"
+                (change)="setCustom('columns', +$any($event.target).value)">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Show Fields</label>
+        @for (f of ['Photo','Name','Title','Company','Bio Link']; track f) {
+          <label class="check-row">
+            <input type="checkbox" [checked]="getCustom('show_' + f.toLowerCase(), true)"
+                   (change)="setCustom('show_' + f.toLowerCase(), $any($event.target).checked)" />
+            {{ f }}
+          </label>
         }
-        <div class="se-group se-row">
-          <label class="se-label">Center focused with thumbnails</label>
-          <input type="checkbox" [(ngModel)]="showFocusedCenter" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Card Background</label>
+        <input type="color" class="color-input"
+               [value]="(getCustom('cardBg', '#ffffff') as string)"
+               (input)="setCustom('cardBg', $any($event.target).value)" />
+      </div>
+    }
+
+    <!-- ── FAQ ── -->
+    @if (sec.type === 'faq') {
+      <div class="subsection-heading">FAQ Items</div>
+      <button type="button" class="add-btn" (click)="addFaqItem()">+ Add Q&amp;A</button>
+      @for (item of faqItems; track $index; let i = $index) {
+        <div class="faq-item">
+          <div class="faq-header">
+            <span>Q{{ i + 1 }}</span>
+            <button type="button" class="remove-small-btn" (click)="deleteFaqItem(i)">×</button>
+          </div>
+          <input type="text" class="field-input" placeholder="Question..."
+                 [value]="item.question"
+                 (input)="updateFaqItem(i, 'question', $any($event.target).value)" />
+          <textarea class="field-textarea" placeholder="Answer..."
+                    [value]="item.answer"
+                    (input)="updateFaqItem(i, 'answer', $any($event.target).value)"></textarea>
         </div>
       }
     }
 
-    <div class="se-divider"></div>
-    <button type="button" class="se-delete-btn" (click)="deleteSection()">Delete Section</button>
+    <!-- ── PRICING ── -->
+    @if (sec.type === 'pricing-cards') {
+      <div class="subsection-heading">Pricing Tiers</div>
+      <div class="field-group">
+        <label class="field-label">Number of Tiers</label>
+        <select class="field-input" [value]="pricingTiers.length"
+                (change)="setPricingCount(+$any($event.target).value)">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      @for (tier of pricingTiers; track $index; let i = $index) {
+        <div class="tier-item">
+          <div class="tier-title">Tier {{ i + 1 }}</div>
+          <input type="text" class="field-input" placeholder="Name" [value]="tier.name"
+                 (input)="updatePricingField(i, 'name', $any($event.target).value)" />
+          <div class="price-row">
+            <input type="text" class="field-input currency-input" placeholder="$" [value]="tier.currency"
+                   (input)="updatePricingField(i, 'currency', $any($event.target).value)" />
+            <input type="text" class="field-input" placeholder="Price" [value]="tier.price"
+                   (input)="updatePricingField(i, 'price', $any($event.target).value)" />
+          </div>
+          <textarea class="field-textarea" placeholder="Features (one per line)"
+                    [value]="tier.features"
+                    (input)="updatePricingField(i, 'features', $any($event.target).value)"></textarea>
+          <input type="text" class="field-input" placeholder="CTA Label" [value]="tier.cta"
+                 (input)="updatePricingField(i, 'cta', $any($event.target).value)" />
+        </div>
+      }
+    }
+
+    <!-- ── GALLERY ── -->
+    @if (sec.type === 'gallery') {
+      <div class="subsection-heading">Gallery</div>
+      <button type="button" class="upload-btn"
+              (click)="galleryInput.nativeElement.click()">⬆ Upload Images</button>
+      <div class="gallery-grid">
+        @for (src of galleryImages; track $index; let i = $index) {
+          <div class="gallery-thumb">
+            <div class="img-container gallery-thumb-img">
+              <img [src]="src" alt="" class="fill-img" />
+            </div>
+            <button type="button" class="slot-remove" (click)="removeGalleryImage(i)">×</button>
+          </div>
+        }
+      </div>
+      <div class="field-group">
+        <label class="field-label">Columns</label>
+        <select class="field-input" [value]="getCustom('galleryCols', 3)"
+                (change)="setCustom('galleryCols', +$any($event.target).value)">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Gap (px)</label>
+        <input type="number" class="field-input" min="0"
+               [value]="(getCustom('galleryGap', 8) as number)"
+               (input)="setCustom('galleryGap', +$any($event.target).value)" />
+      </div>
+    }
+
+    <!-- ── AGENDA ── -->
+    @if (sec.type === 'agenda') {
+      <div class="subsection-heading">Agenda</div>
+      <button type="button" class="add-btn" (click)="addAgendaItem()">+ Add Session</button>
+      @for (item of agendaItems; track $index; let i = $index) {
+        <div class="agenda-item">
+          <div class="agenda-header">
+            <span>Session {{ i + 1 }}</span>
+            <button type="button" class="remove-small-btn" (click)="deleteAgendaItem(i)">×</button>
+          </div>
+          <input type="text" class="field-input" placeholder="Time (e.g. 9:00 AM)"
+                 [value]="item.time"
+                 (input)="updateAgendaItem(i, 'time', $any($event.target).value)" />
+          <input type="text" class="field-input" placeholder="Session Title"
+                 [value]="item.title"
+                 (input)="updateAgendaItem(i, 'title', $any($event.target).value)" />
+          <input type="text" class="field-input" placeholder="Speaker (optional)"
+                 [value]="item.speaker"
+                 (input)="updateAgendaItem(i, 'speaker', $any($event.target).value)" />
+        </div>
+      }
+    }
+
+    <!-- Delete section -->
+    <div class="delete-section-area">
+      <button type="button" class="delete-section-btn" (click)="deleteSection()">🗑 Delete Section</button>
+    </div>
+
   </div>
-} @else {
-  <div class="se-empty">Select a section to edit its settings.</div>
 }

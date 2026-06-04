@@ -1,87 +1,108 @@
 import {
-  Component, Input, OnChanges, OnDestroy, PLATFORM_ID, SimpleChanges, inject, signal,
+  Component, Input, OnDestroy, OnInit, PLATFORM_ID, inject, signal, computed,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { EditorService } from '../../services/editor.service';
+import { isPlatformBrowser, NgStyle } from '@angular/common';
+import { EditorService, DEFAULT_CAROUSEL_CONFIG } from '../../services/editor.service';
 import type { Section } from '../../models/page.model';
 
 @Component({
   selector: 'app-carousel-preview',
   standalone: true,
-  imports: [],
+  imports: [NgStyle],
   templateUrl: './carousel-preview.component.html',
   styleUrl: './carousel-preview.component.css',
 })
-export class CarouselPreviewComponent implements OnChanges, OnDestroy {
-  @Input({ required: true }) section!: Section;
+export class CarouselPreviewComponent implements OnInit, OnDestroy {
+  @Input() section!: Section;
+  @Input() rowId!: string;
 
   protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
   focusedIndex = signal(0);
-  private intervalId: ReturnType<typeof setInterval> | null = null;
+  thumbnailStartIndex = signal(0);
+  isHovered = signal(false);
 
-  get focusedImage() {
-    const imgs = this.images;
-    return imgs.length > 0 ? imgs[this.focusedIndex() % imgs.length] : null;
-  }
+  private autoScrollTimer: ReturnType<typeof setInterval> | null = null;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['section']) {
-      this.resetAutoScroll();
-    }
+  get cfg() {
+    return this.section.carouselConfig ?? { ...DEFAULT_CAROUSEL_CONFIG };
   }
 
   get images() {
-    return [...(this.section.carouselImages ?? [])].sort((a, b) => a.order - b.order);
+    return (this.section.carouselImages ?? []).slice().sort((a, b) => a.order - b.order);
   }
 
-  get config() {
-    return this.section.carouselConfig ?? { scrollMode: 'click' as const, autoScrollInterval: 3000, showFocusedCenter: true };
-  }
+  get totalImages() { return this.images.length; }
 
-  private resetAutoScroll(): void {
-    this.clearInterval();
-    if (!isPlatformBrowser(this.platformId)) return;
-    const cfg = this.config;
-    if ((cfg.scrollMode === 'auto' || cfg.scrollMode === 'both') && this.images.length > 1) {
-      this.intervalId = setInterval(() => {
-        this.next();
-      }, cfg.autoScrollInterval || 3000);
-    }
-  }
+  visibleThumbnails = computed(() => {
+    const start = this.thumbnailStartIndex();
+    return Array.from({ length: 6 }, (_, i) => {
+      const idx = start + i;
+      return { idx, image: this.images[idx] ?? null };
+    });
+  });
 
-  prev(): void {
+  largeImageSrc = computed(() => {
     const imgs = this.images;
-    if (!imgs.length) return;
-    this.focusedIndex.update(i => (i - 1 + imgs.length) % imgs.length);
-  }
+    if (!imgs.length) return null;
+    return (imgs[this.focusedIndex()] ?? imgs[0])?.src ?? null;
+  });
 
-  next(): void {
-    const imgs = this.images;
-    if (!imgs.length) return;
-    this.focusedIndex.update(i => (i + 1) % imgs.length);
-  }
-
-  setFocused(index: number): void {
-    this.focusedIndex.set(index);
-  }
-
-  onCarouselClick(event: MouseEvent): void {
-    event.stopPropagation();
-    if (!this.es.isPreviewMode()) {
-      this.es.selectSection(this.section.id);
-    }
-  }
-
-  private clearInterval(): void {
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+  ngOnInit(): void {
+    this.startAutoScroll();
   }
 
   ngOnDestroy(): void {
-    this.clearInterval();
+    this.stopAutoScroll();
+  }
+
+  startAutoScroll(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const mode = this.cfg.scrollMode;
+    if (mode !== 'auto' && mode !== 'both') return;
+    const interval = (this.cfg.autoScrollInterval ?? 3) * 1000;
+    this.autoScrollTimer = setInterval(() => {
+      this.nextImage();
+    }, interval);
+  }
+
+  stopAutoScroll(): void {
+    if (this.autoScrollTimer !== null) {
+      clearInterval(this.autoScrollTimer);
+      this.autoScrollTimer = null;
+    }
+  }
+
+  previousImage(): void {
+    if (!this.totalImages) return;
+    this.focusedIndex.update(i => (i - 1 + this.totalImages) % this.totalImages);
+    this.scrollThumbnails();
+  }
+
+  nextImage(): void {
+    if (!this.totalImages) return;
+    this.focusedIndex.update(i => (i + 1) % this.totalImages);
+    this.scrollThumbnails();
+  }
+
+  setFocused(idx: number): void {
+    this.focusedIndex.set(idx);
+    this.scrollThumbnails();
+  }
+
+  scrollThumbnails(): void {
+    const fi = this.focusedIndex();
+    const start = Math.max(0, fi - 2);
+    this.thumbnailStartIndex.set(start);
+  }
+
+  onEditCarouselClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.es.selectSection(this.section.id);
+  }
+
+  isThumbnailActive(idx: number): boolean {
+    return idx === this.focusedIndex();
   }
 }

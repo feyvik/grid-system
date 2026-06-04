@@ -1,162 +1,148 @@
-import { Component, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorService } from '../../services/editor.service';
-import { SectionEditorComponent } from '../section-editor/section-editor.component';
-import type { CanvasElement, GlobalColors } from '../../models/page.model';
+import type { CanvasElement, ElementStyles, GlobalColors, PageBackground } from '../../models/page.model';
 
-type PanelTab = 'element' | 'page' | 'colors';
+type Tab = 'element' | 'page' | 'colors';
+
+const COLOR_KEYS: (keyof GlobalColors)[] = ['primary', 'secondary', 'accent1', 'accent2', 'accent3', 'accent4'];
+const COLOR_LABELS: Record<keyof GlobalColors, string> = {
+  primary: 'Primary', secondary: 'Secondary',
+  accent1: 'Accent 1', accent2: 'Accent 2', accent3: 'Accent 3', accent4: 'Accent 4',
+};
 
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [FormsModule, SectionEditorComponent],
+  imports: [FormsModule],
   templateUrl: './settings-panel.component.html',
   styleUrl: './settings-panel.component.css',
 })
 export class SettingsPanelComponent {
+  readonly Math = Math;
   protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
-  activeTab = signal<PanelTab>('page');
+  activeTab = signal<Tab>('page');
 
-  activePage = this.es.activePage;
+  readonly colorKeys = COLOR_KEYS;
+  readonly colorLabels = COLOR_LABELS;
+  readonly colorTokenOptions = [null, ...COLOR_KEYS] as const;
 
-  readonly colorKeys: { key: keyof GlobalColors; label: string }[] = [
-    { key: 'primary', label: 'Primary' },
-    { key: 'secondary', label: 'Secondary' },
-    { key: 'accent1', label: 'Accent 1' },
-    { key: 'accent2', label: 'Accent 2' },
-    { key: 'accent3', label: 'Accent 3' },
-    { key: 'accent4', label: 'Accent 4' },
-  ];
+  selectedElement = computed(() => this.es.selectedElement());
+  activePage = computed(() => this.es.activePage());
 
-  constructor() {
-    effect(() => {
-      if (this.es.selectedElement()) this.activeTab.set('element');
-    });
-  }
-
-  // ── Element tab ────────────────────────────────────────────
-
-  get el() { return this.es.selectedElement(); }
-
-  updateContent(v: string): void {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { content: v });
-  }
-
-  get color(): string { return this.el?.styles?.color ?? '#000000'; }
-  set color(v: string) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, color: v, useGlobalColor: null } });
-  }
-
-  get backgroundColor(): string {
-    const bg = this.el?.styles?.backgroundColor;
-    return !bg || bg === 'transparent' ? '#ffffff' : bg;
-  }
-  set backgroundColor(v: string) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, backgroundColor: v, useGlobalBackground: null } });
-  }
-
-  get fontSize(): number { return this.el?.styles?.fontSize ?? 16; }
-  set fontSize(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, fontSize: Number(v) } });
-  }
-
-  get borderRadius(): number { return this.el?.styles?.borderRadius ?? 0; }
-  set borderRadius(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { styles: { ...e.styles, borderRadius: Number(v) } });
-  }
-
-  get elWidth(): number { return this.el?.width ?? 4; }
-  set elWidth(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { width: Math.max(2, Number(v)) });
-  }
-
-  get elHeight(): number { return this.el?.height ?? 2; }
-  set elHeight(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { height: Math.max(2, Number(v)) });
-  }
-
-  get elX(): number { return this.el?.x ?? 0; }
-  set elX(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { x: Math.max(0, Number(v)) });
-  }
-
-  get elY(): number { return this.el?.y ?? 0; }
-  set elY(v: number) {
-    const e = this.el;
-    if (e) this.es.updateElement(e.id, { y: Math.max(0, Number(v)) });
-  }
-
-  deleteCurrentElement(): void {
+  isFreeElement = computed(() => {
     const id = this.es.selectedElementId();
-    if (id) this.es.deleteElement(id);
+    if (!id) return false;
+    return this.es.activePage().elements.some(el => el.id === id);
+  });
+
+  sectionContext = computed(() => {
+    const sectionId = this.es.selectedElementSectionId();
+    if (!sectionId) return null;
+    for (const row of this.es.activePage().rows) {
+      const sec = row.sections.find(s => s.id === sectionId);
+      if (sec) return sec;
+    }
+    return null;
+  });
+
+  contextLabel = computed(() => {
+    const el = this.selectedElement();
+    if (!el) return null;
+    if (this.isFreeElement()) return 'Free Element';
+    const sec = this.sectionContext();
+    return sec ? `In Section: ${sec.label}` : 'Section Element';
+  });
+
+  // Auto-select element tab when element is selected
+  selectElementTab(): void {
+    if (this.selectedElement()) this.activeTab.set('element');
   }
 
-  triggerImageUpload(): void {
-    const e = this.el;
-    if (!e || !isPlatformBrowser(this.platformId)) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (ev) => {
-      const file = (ev.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => this.es.updateElement(e.id, { src: reader.result as string });
-      reader.readAsDataURL(file);
-    };
-    input.click();
+  // ─── Element updates ──────────────────────────────────────────
+
+  updateElementField(changes: Partial<CanvasElement>): void {
+    const el = this.selectedElement();
+    if (!el) return;
+    if (this.isFreeElement()) {
+      this.es.updateElement(el.id, changes);
+    } else {
+      const rowId = this.es.selectedElementRowId();
+      const sectionId = this.es.selectedElementSectionId();
+      if (rowId && sectionId) {
+        this.es.updateElementInSection(rowId, sectionId, el.id, changes);
+      }
+    }
   }
 
-  // ── Page tab ──────────────────────────────────────────────
-
-  get pageTitle(): string { return this.activePage().title; }
-  set pageTitle(v: string) { this.es.updatePageTitle(this.activePage().id, v); }
-
-  get pageSlug(): string { return this.activePage().slug; }
-  set pageSlug(v: string) { this.es.updatePageSlug(this.activePage().id, v); }
-
-  get bgType(): 'color' | 'image' { return this.activePage().background.type; }
-
-  get bgColor(): string {
-    return this.activePage().background.type === 'color' ? this.activePage().background.value : '#ffffff';
-  }
-  set bgColor(v: string) {
-    this.es.updatePageBackground(this.activePage().id, { type: 'color', value: v });
+  updateStyles(changes: Partial<ElementStyles>): void {
+    const el = this.selectedElement();
+    if (!el) return;
+    this.updateElementField({ styles: { ...(el.styles ?? {}), ...changes } });
   }
 
-  selectBgType(type: 'color' | 'image'): void {
-    this.es.updatePageBackground(this.activePage().id,
-      type === 'color' ? { type: 'color', value: '#ffffff' } : { type: 'image', value: '' });
+  setColorToken(property: 'useGlobalColor' | 'useGlobalBackground', token: keyof GlobalColors | null): void {
+    this.updateStyles({ [property]: token });
   }
 
-  onBgImageFile(event: Event): void {
+  setFixedColor(property: 'color' | 'backgroundColor', value: string): void {
+    if (property === 'color') {
+      this.updateStyles({ color: value, useGlobalColor: null });
+    } else {
+      this.updateStyles({ backgroundColor: value, useGlobalBackground: null });
+    }
+  }
+
+  deleteElement(): void {
+    const el = this.selectedElement();
+    if (!el) return;
+    if (this.isFreeElement()) {
+      this.es.deleteElement(el.id);
+    } else {
+      const rowId = this.es.selectedElementRowId();
+      const sectionId = this.es.selectedElementSectionId();
+      if (rowId && sectionId) {
+        this.es.deleteElementFromSection(rowId, sectionId, el.id);
+      }
+    }
+  }
+
+  // ─── Page updates ─────────────────────────────────────────────
+
+  updatePageTitle(value: string): void {
+    this.es.updatePageTitle(this.activePage().id, value);
+  }
+
+  updatePageSlug(value: string): void {
+    this.es.updatePageSlug(this.activePage().id, value);
+  }
+
+  updatePageBackground(type: 'color' | 'image', value: string): void {
+    this.es.updatePageBackground(this.activePage().id, { type, value });
+  }
+
+  onPageBgImageUpload(event: Event): void {
     if (!isPlatformBrowser(this.platformId)) return;
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    const id = this.activePage().id;
     const reader = new FileReader();
-    reader.onload = () => this.es.updatePageBackground(id, { type: 'image', value: reader.result as string });
+    reader.onload = () => {
+      this.es.updatePageBackground(this.activePage().id, { type: 'image', value: reader.result as string });
+    };
     reader.readAsDataURL(file);
   }
 
-  duplicatePage(): void { this.es.duplicatePage(this.activePage().id); }
-  deletePage(): void {
-    if (this.es.pages().length > 1) this.es.deletePage(this.activePage().id);
+  // ─── Helpers ─────────────────────────────────────────────────
+
+  resolvedColorPreview(token: keyof GlobalColors): string {
+    return this.es.globalColors()[token];
   }
 
-  // ── Global colors tab ────────────────────────────────────
-
-  getColor(key: keyof GlobalColors): string { return this.es.globalColors()[key]; }
-  setColor(key: keyof GlobalColors, value: string): void { this.es.updateGlobalColor(key, value); }
+  colorTokenLabel(token: keyof GlobalColors | null): string {
+    if (!token) return 'Fixed';
+    return COLOR_LABELS[token] ?? token;
+  }
 }

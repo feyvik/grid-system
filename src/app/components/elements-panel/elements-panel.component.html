@@ -1,47 +1,55 @@
-<div class="panel-group">
-  <div class="group-header">Elements</div>
-  <div class="items-list">
-    @for (item of elementItems; track item.type) {
-      <div class="item-card"
-           draggable="true"
-           (dragstart)="onElementDragStart($event, item.type)">
-        <span class="icon" [innerHTML]="item.icon"></span>
-        <span class="label">{{ item.label }}</span>
-      </div>
-    }
-  </div>
-</div>
+<!-- When a section is selected in page mode, show section editor -->
+@if (es.selectedSection() && es.editingMode() === 'page') {
+  <app-section-editor />
+} @else {
 
-<div class="panel-group">
-  <div class="group-header">Sections</div>
-  <div class="items-list">
-    @for (sec of sectionItems; track sec.type) {
-      <div class="item-card"
-           draggable="true"
-           (dragstart)="onSectionDragStart($event, sec.type)">
-        <span class="icon" [innerHTML]="sec.icon"></span>
-        <span class="label">{{ sec.label }}</span>
-      </div>
-    }
-  </div>
-  <button type="button" class="add-custom-btn" (click)="addCustomSection()">+ Add Custom Section</button>
-</div>
+  <div class="panel-content">
 
-<div class="panel-group">
-  <div class="group-header">Global Colors</div>
-  <div class="colors-list">
-    @for (c of colorKeys; track c.key) {
-      <div class="color-row">
-        <span class="color-name">{{ c.label }}</span>
-        <input
-          type="color"
-          class="color-swatch"
-          title="Global color"
-          [attr.aria-label]="c.label + ' color'"
-          [value]="getColor(c.key)"
-          (input)="setColor(c.key, $any($event.target).value)" />
-        <span class="color-hex">{{ getColor(c.key) }}</span>
-      </div>
-    }
+    <!-- ELEMENTS -->
+    <div class="panel-section-heading">ELEMENTS</div>
+    <div class="items-grid">
+      @for (item of elementItems; track item.type) {
+        <div class="draggable-item"
+             draggable="true"
+             [title]="item.label"
+             (dragstart)="onElementDragStart($event, item.type)">
+          <span class="item-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- SECTIONS -->
+    <div class="panel-section-heading">SECTIONS</div>
+    <div class="sections-list">
+      @for (item of sectionItems; track item.type) {
+        <div class="section-draggable"
+             draggable="true"
+             [title]="item.label"
+             (dragstart)="onSectionDragStart($event, item.type)">
+          <span class="drag-icon">⠿</span>
+          <span>{{ item.label }}</span>
+        </div>
+      }
+      <button type="button" class="custom-section-btn" (click)="addCustomSection()">
+        + Add Custom Section
+      </button>
+    </div>
+
+    <!-- GLOBAL COLORS -->
+    <div class="panel-section-heading">GLOBAL COLORS</div>
+    <div class="colors-list">
+      @for (key of colorKeys; track key) {
+        <div class="color-row">
+          <span class="color-name">{{ colorLabels[key] }}</span>
+          <input type="color" class="color-dot"
+                 [value]="es.globalColors()[key]"
+                 [title]="colorLabels[key]"
+                 (input)="updateColor(key, $any($event.target).value)" />
+          <span class="color-hex">{{ es.globalColors()[key] }}</span>
+        </div>
+      }
+    </div>
+
   </div>
-</div>
+}

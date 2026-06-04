@@ -1,4 +1,4 @@
-import { Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EditorService } from '../../services/editor.service';
 
@@ -10,16 +10,19 @@ import { EditorService } from '../../services/editor.service';
   styleUrl: './json-panel.component.css',
 })
 export class JsonPanelComponent {
-  private es = inject(EditorService);
+  protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
   isOpen = signal(false);
-  pageJSON = computed(() => this.es.getPageJSON());
+  copied = signal(false);
 
   toggle(): void { this.isOpen.update(v => !v); }
 
-  copyToClipboard(): void {
+  copy(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    navigator.clipboard.writeText(this.pageJSON()).catch(console.error);
+    navigator.clipboard.writeText(this.es.getPageJSON()).then(() => {
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    });
   }
 }

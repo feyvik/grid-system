@@ -1,131 +1,122 @@
-<input #logoInput type="file" accept="image/*" class="hidden-input" title="Upload logo" aria-label="Upload logo" (change)="onLogoFile($event)" />
+<input #logoInput type="file" accept="image/*" hidden (change)="onLogoFile($event)" />
+<input #bgInput type="file" accept="image/*" hidden (change)="onBgFile($event)" />
 
 <div class="header-editor">
 
   <!-- Live preview -->
-  <div class="preview-bar" [ngStyle]="getPreviewBg()" [style.height.px]="headerHeight">
+  <div class="preview-bar" [ngStyle]="previewStyle()" [style.height.px]="es.activeHeader().height">
     <div class="preview-inner">
-      @if (header.logoSrc) {
-        <img class="preview-logo" [src]="header.logoSrc" [style.width.px]="logoWidth" [style.height.px]="logoHeight" alt="Header logo" />
+      @if (es.activeHeader().logoSrc) {
+        <div class="preview-logo-wrap"
+             [style.width.px]="es.activeHeader().logoWidth"
+             [style.height.px]="es.activeHeader().logoHeight">
+          <img [src]="es.activeHeader().logoSrc" alt="Logo"
+               style="width:100%;height:100%;object-fit:contain;display:block;" />
+        </div>
       } @else {
-        <div class="preview-logo-placeholder">Logo</div>
+        <span class="preview-logo-ph">Logo</span>
       }
       <nav class="preview-nav">
-        @for (nl of header.navLinks; track nl.pageId) {
-          <span class="preview-nav-link" [style.color]="defaultColor">{{ nl.label }}</span>
+        @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+          @if (nl.visible) {
+            <span [style.color]="es.activeHeader().defaultColor" class="preview-link">{{ nl.label }}</span>
+          }
         }
       </nav>
     </div>
+    @if (!es.activeHeader().enabled) {
+      <div class="hidden-overlay">Header hidden</div>
+    }
   </div>
 
-  <!-- Edit panel -->
-  <div class="edit-panel">
+  <div class="settings">
 
-    <!-- Background -->
-    <section class="edit-section">
-      <h3 class="section-title">Background</h3>
-      <div class="radio-row">
-        <button type="button" class="type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Solid Color</button>
-        <button type="button" class="type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
-      </div>
-      @if (bgType === 'color') {
-        <div class="color-row">
-          <input type="color" [(ngModel)]="bgColor" title="Background color" />
-          <span class="color-hex">{{ bgColor }}</span>
-        </div>
-      } @else {
-        <input type="file" accept="image/*" class="file-input" title="Background image" aria-label="Background image" (change)="onBgImageFile($event)" />
-      }
-    </section>
-
-    <!-- Logo -->
-    <section class="edit-section">
-      <h3 class="section-title">Logo</h3>
-      <button type="button" class="action-btn" (click)="triggerLogoUpload()">
-        {{ header.logoSrc ? 'Change Logo' : 'Upload Logo' }}
-      </button>
-      @if (header.logoSrc) {
-        <div class="logo-preview-row">
-          <img [src]="header.logoSrc" class="logo-thumb" alt="Logo preview" />
-          <button type="button" class="remove-btn" (click)="removeLogo()">Remove</button>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Width (px)</label>
-            <input type="number" [(ngModel)]="logoWidth" min="20" max="400" title="Logo width" />
-          </div>
-          <div class="form-group">
-            <label>Height (px)</label>
-            <input type="number" [(ngModel)]="logoHeight" min="16" max="200" title="Logo height" />
-          </div>
-        </div>
-      }
-    </section>
+    <!-- Enabled toggle -->
+    <div class="field-row">
+      <label class="field-label">Show Header</label>
+      <input type="checkbox" [checked]="es.activeHeader().enabled" (change)="toggleEnabled()" />
+    </div>
 
     <!-- Height -->
-    <section class="edit-section">
-      <h3 class="section-title">Height</h3>
-      <div class="form-group">
-        <input type="number" [(ngModel)]="headerHeight" min="32" max="200" title="Header height in px" />
-        <span class="unit-label">px</span>
+    <div class="field-group">
+      <label class="field-label">Height (px)</label>
+      <input type="number" class="field-input" min="32" max="200"
+             [value]="es.activeHeader().height"
+             (input)="es.updateHeader({ height: +$any($event.target).value })" />
+    </div>
+
+    <!-- Background -->
+    <div class="section-heading">Background</div>
+    <div class="radio-row">
+      <label><input type="radio" name="hbg" [checked]="es.activeHeader().background.type === 'color'"
+                    (change)="setBgColor(es.activeHeader().background.value || '#2c3e7a')" /> Color</label>
+      <label><input type="radio" name="hbg" [checked]="es.activeHeader().background.type === 'image'"
+                    (change)="bgInput.nativeElement.click()" /> Image</label>
+    </div>
+    @if (es.activeHeader().background.type === 'color') {
+      <input type="color" class="color-input"
+             [value]="es.activeHeader().background.value"
+             (input)="setBgColor($any($event.target).value)" />
+    }
+
+    <!-- Logo -->
+    <div class="section-heading">Logo</div>
+    @if (es.activeHeader().logoSrc) {
+      <div class="logo-preview">
+        <div style="width:80px;height:40px;overflow:hidden;display:block;">
+          <img [src]="es.activeHeader().logoSrc" alt="Logo"
+               style="width:100%;height:100%;object-fit:contain;display:block;" />
+        </div>
+        <button type="button" class="remove-btn" (click)="removeLogo()">Remove</button>
       </div>
-    </section>
+    } @else {
+      <button type="button" class="upload-btn" (click)="logoInput.nativeElement.click()">⬆ Upload Logo</button>
+    }
+    <div class="two-col">
+      <div class="field-group">
+        <label class="field-label">Width (px)</label>
+        <input type="number" class="field-input" min="20" max="400"
+               [value]="es.activeHeader().logoWidth"
+               (input)="es.updateHeader({ logoWidth: +$any($event.target).value })" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Height (px)</label>
+        <input type="number" class="field-input" min="16" max="200"
+               [value]="es.activeHeader().logoHeight"
+               (input)="es.updateHeader({ logoHeight: +$any($event.target).value })" />
+      </div>
+    </div>
 
     <!-- Navigation -->
-    <section class="edit-section">
-      <h3 class="section-title">Navigation</h3>
-      <div class="nav-list">
-        @for (page of editorService.pages(); track page.id) {
-          <div class="nav-row">
-            <input
-              type="checkbox"
-              [id]="'hn-' + page.id"
-              [checked]="isPageInNav(page.id)"
-              (change)="toggleNavPage(page.id)"
-            />
-            <label [for]="'hn-' + page.id" class="nav-page-title">{{ page.title }}</label>
-            @if (isPageInNav(page.id)) {
-              <input
-                type="text"
-                class="nav-label-input"
-                [value]="getNavLabel(page.id)"
-                (input)="setNavLabel(page.id, $any($event.target).value)"
-                placeholder="Label"
-                title="Navigation label"
-              />
-            }
-          </div>
-        }
-      </div>
-
-      <div class="form-row color-row-section">
-        <div class="form-group">
-          <label>Active Color</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="activeColor" title="Active link color" />
-            <span class="color-hex">{{ activeColor }}</span>
-          </div>
+    <div class="section-heading">Navigation Links</div>
+    <div class="nav-links-list">
+      @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+        <div class="nav-link-row">
+          <input type="checkbox" [checked]="nl.visible"
+                 (change)="es.updateHeader({ navLinks: es.activeHeader().navLinks.map(n => n.pageId === nl.pageId ? { ...n, visible: $any($event.target).checked } : n) })" />
+          <span class="nav-page-title">{{ es.pages().find(p => p.id === nl.pageId)?.title ?? nl.label }}</span>
+          <input type="text" class="nav-label-input" placeholder="Override label..."
+                 [value]="nl.label"
+                 (input)="es.updateHeader({ navLinks: es.activeHeader().navLinks.map(n => n.pageId === nl.pageId ? { ...n, label: $any($event.target).value } : n) })" />
         </div>
-        <div class="form-group">
-          <label>Default Color</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="defaultColor" title="Default link color" />
-            <span class="color-hex">{{ defaultColor }}</span>
-          </div>
-        </div>
-      </div>
-    </section>
+      }
+    </div>
 
-    <!-- Visibility -->
-    <section class="edit-section">
-      <h3 class="section-title">Visibility</h3>
-      <div class="toggle-row">
-        <span>Show header on all pages</span>
-        <button type="button" class="toggle-btn" [class.on]="enabled" (click)="toggleEnabled()">
-          {{ enabled ? 'On' : 'Off' }}
-        </button>
+    <!-- Colors -->
+    <div class="two-col">
+      <div class="field-group">
+        <label class="field-label">Active Link Color</label>
+        <input type="color" class="color-input"
+               [value]="es.activeHeader().activeColor"
+               (input)="es.updateHeader({ activeColor: $any($event.target).value })" />
       </div>
-    </section>
+      <div class="field-group">
+        <label class="field-label">Default Link Color</label>
+        <input type="color" class="color-input"
+               [value]="es.activeHeader().defaultColor"
+               (input)="es.updateHeader({ defaultColor: $any($event.target).value })" />
+      </div>
+    </div>
 
   </div>
 </div>

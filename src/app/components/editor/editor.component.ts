@@ -4,19 +4,16 @@ import { FormsModule } from '@angular/forms';
 import { CanvasComponent } from '../canvas/canvas.component';
 import { ElementsPanelComponent } from '../elements-panel/elements-panel.component';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
-import { JsonPanelComponent } from '../json-panel/json-panel.component';
 import { HeaderEditorComponent } from '../header-editor/header-editor.component';
 import { FooterEditorComponent } from '../footer-editor/footer-editor.component';
+import { JsonPanelComponent } from '../json-panel/json-panel.component';
+import { CarouselPreviewComponent } from '../carousel-preview/carousel-preview.component';
 import { EditorService } from '../../services/editor.service';
-import type { CanvasElement, GlobalColors } from '../../models/page.model';
+import type { CanvasElement, Section } from '../../models/page.model';
 
 const GRID = 40;
 
-interface ContextMenuState {
-  pageId: string;
-  x: number;
-  y: number;
-}
+interface ContextMenuState { pageId: string; x: number; y: number; }
 
 @Component({
   selector: 'app-editor',
@@ -24,7 +21,8 @@ interface ContextMenuState {
   imports: [
     NgStyle, FormsModule,
     CanvasComponent, ElementsPanelComponent, SettingsPanelComponent,
-    JsonPanelComponent, HeaderEditorComponent, FooterEditorComponent,
+    HeaderEditorComponent, FooterEditorComponent,
+    JsonPanelComponent, CarouselPreviewComponent,
   ],
   templateUrl: './editor.component.html',
   styleUrl: './editor.component.css',
@@ -36,15 +34,6 @@ export class EditorComponent {
   contextMenu = signal<ContextMenuState | null>(null);
   renamingPageId = signal<string | null>(null);
   renameValue = '';
-
-  readonly colorKeys: { key: keyof GlobalColors; label: string }[] = [
-    { key: 'primary', label: 'Primary' },
-    { key: 'secondary', label: 'Secondary' },
-    { key: 'accent1', label: 'Accent 1' },
-    { key: 'accent2', label: 'Accent 2' },
-    { key: 'accent3', label: 'Accent 3' },
-    { key: 'accent4', label: 'Accent 4' },
-  ];
 
   toggleGrid(): void { this.es.showGrid.update(v => !v); }
   togglePreview(): void { this.es.isPreviewMode.update(v => !v); }
@@ -77,32 +66,21 @@ export class EditorComponent {
   }
 
   confirmRename(pageId: string): void {
-    if (this.renameValue.trim()) {
-      this.es.updatePageTitle(pageId, this.renameValue.trim());
-    }
+    if (this.renameValue.trim()) this.es.updatePageTitle(pageId, this.renameValue.trim());
     this.renamingPageId.set(null);
   }
 
   cancelRename(): void { this.renamingPageId.set(null); }
 
-  ctxDuplicate(pageId: string): void {
-    this.es.duplicatePage(pageId);
-    this.closeContextMenu();
-  }
-
-  ctxToggleEnabled(pageId: string): void {
-    this.es.togglePageEnabled(pageId);
-    this.closeContextMenu();
-  }
-
-  ctxDelete(pageId: string): void {
-    this.es.deletePage(pageId);
-    this.closeContextMenu();
-  }
+  ctxDuplicate(pageId: string): void { this.es.duplicatePage(pageId); this.closeContextMenu(); }
+  ctxToggleEnabled(pageId: string): void { this.es.togglePageEnabled(pageId); this.closeContextMenu(); }
+  ctxDelete(pageId: string): void { this.es.deletePage(pageId); this.closeContextMenu(); }
 
   isPageEnabled(pageId: string): boolean {
     return this.es.pages().find(p => p.id === pageId)?.enabled ?? true;
   }
+
+  // ── Preview helpers ───────────────────────────────────────────
 
   previewHeaderStyle(): Record<string, string> {
     const bg = this.es.activeHeader().background;
@@ -125,8 +103,17 @@ export class EditorComponent {
       : { backgroundColor: bg.value || '#313136' };
   }
 
+  previewSectionBg(section: Section): Record<string, string> {
+    const bg = section.backgroundOverride;
+    if (!bg) return {};
+    return bg.type === 'image' && bg.value
+      ? { backgroundImage: `url(${bg.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      : { backgroundColor: bg.value };
+  }
+
   previewElementStyle(el: CanvasElement): Record<string, string> {
     return {
+      position: 'absolute',
       left: el.x * GRID + 'px',
       top: el.y * GRID + 'px',
       width: el.width * GRID + 'px',
@@ -135,6 +122,7 @@ export class EditorComponent {
       fontSize: (el.styles?.fontSize ?? 16) + 'px',
       backgroundColor: this.es.resolveColor(el.styles, 'backgroundColor'),
       borderRadius: (el.styles?.borderRadius ?? 0) + 'px',
+      overflow: 'hidden',
     };
   }
 }

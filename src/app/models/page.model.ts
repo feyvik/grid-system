@@ -11,7 +11,11 @@ export type SectionType =
   | 'agenda'
   | 'custom';
 
+export type SectionWidth = 'full' | 'half' | 'third';
+
 export type CarouselScrollMode = 'auto' | 'click' | 'both';
+
+export type AlignValue = 'left' | 'center' | 'right';
 
 export interface CarouselImage {
   id: string;
@@ -24,6 +28,10 @@ export interface CarouselConfig {
   scrollMode: CarouselScrollMode;
   autoScrollInterval: number;
   showFocusedCenter: boolean;
+  largeImageHeight: number;
+  thumbnailHeight: number;
+  thumbnailWidth: number;
+  visibleThumbnails: number;
 }
 
 export interface GlobalColors {
@@ -63,11 +71,18 @@ export interface Section {
   order: number;
   enabled: boolean;
   height: number;
+  width: SectionWidth;
   elements: CanvasElement[];
   carouselConfig?: CarouselConfig;
   carouselImages?: CarouselImage[];
   backgroundOverride?: { type: 'color' | 'image'; value: string } | null;
-  customSettings?: Record<string, any>;
+  customSettings?: Record<string, unknown>;
+}
+
+export interface Row {
+  id: string;
+  order: number;
+  sections: Section[];
 }
 
 export interface NavLink {
@@ -82,7 +97,9 @@ export interface HeaderConfig {
   logoSrc?: string;
   logoWidth: number;
   logoHeight: number;
+  logoAlignment: AlignValue;
   navLinks: NavLink[];
+  navAlignment: AlignValue;
   activeColor: string;
   defaultColor: string;
   height: number;
@@ -92,8 +109,11 @@ export interface FooterConfig {
   enabled: boolean;
   background: { type: 'color' | 'image'; value: string };
   logoSrc?: string;
+  logoAlignment: AlignValue;
   copyrightText: string;
+  copyrightAlignment: AlignValue;
   navLinks: NavLink[];
+  navAlignment: AlignValue;
   activeColor: string;
   defaultColor: string;
   elements: CanvasElement[];
@@ -113,7 +133,7 @@ export interface Page {
   isDefault: boolean;
   background: PageBackground;
   elements: CanvasElement[];
-  sections: Section[];
+  rows: Row[];
   canvasHeight: number;
 }
 

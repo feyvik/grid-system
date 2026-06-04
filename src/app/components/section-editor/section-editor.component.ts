@@ -1,8 +1,12 @@
-import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import { Component, ElementRef, PLATFORM_ID, ViewChild, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorService } from '../../services/editor.service';
-import type { Section } from '../../models/page.model';
+import type { CarouselConfig, Row, Section, SectionWidth } from '../../models/page.model';
+
+interface FaqItem { question: string; answer: string; }
+interface AgendaItem { time: string; title: string; speaker: string; }
+interface PricingTier { name: string; price: string; currency: string; features: string; cta: string; }
 
 @Component({
   selector: 'app-section-editor',
@@ -12,104 +16,255 @@ import type { Section } from '../../models/page.model';
   styleUrl: './section-editor.component.css',
 })
 export class SectionEditorComponent {
+  @ViewChild('uploadAllInput') uploadAllInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('slotInput') slotInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('galleryInput') galleryInput!: ElementRef<HTMLInputElement>;
+
   protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
   section = computed(() => this.es.selectedSection());
+  row = computed(() => this.es.selectedSectionRow());
 
-  get label(): string { return this.section()?.label ?? ''; }
-  set label(v: string) { this.updateSection({ label: v }); }
+  readonly elementTypes = [
+    { type: 'text', label: 'Text', icon: 'T' },
+    { type: 'image', label: 'Image', icon: '🖼' },
+    { type: 'button', label: 'Button', icon: '▭' },
+    { type: 'shape', label: 'Shape', icon: '◼' },
+    { type: 'divider', label: 'Divider', icon: '—' },
+  ] as const;
 
-  get height(): number { return this.section()?.height ?? 200; }
-  set height(v: number) { this.updateSection({ height: Math.max(100, Number(v)) }); }
+  private pendingSlotIndex = signal<number | null>(null);
 
-  get enabled(): boolean { return this.section()?.enabled ?? true; }
-  toggleEnabled(): void { const s = this.section(); if (s) this.es.toggleSectionEnabled(s.id); }
+  // ─── Common section updates ──────────────────────────────────
 
-  get bgOverrideType(): 'none' | 'color' | 'image' {
-    const bg = this.section()?.backgroundOverride;
-    if (!bg) return 'none';
-    return bg.type;
+  updateLabel(value: string): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, { label: value });
   }
 
-  setBgOverrideType(type: 'none' | 'color' | 'image'): void {
-    if (type === 'none') {
-      this.updateSection({ backgroundOverride: null });
-    } else if (type === 'color') {
-      this.updateSection({ backgroundOverride: { type: 'color', value: '#ffffff' } });
-    } else {
-      this.updateSection({ backgroundOverride: { type: 'image', value: '' } });
-    }
+  updateHeight(value: number): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, { height: Math.max(100, value) });
   }
 
-  get bgOverrideColor(): string {
-    const bg = this.section()?.backgroundOverride;
-    return (bg?.type === 'color' ? bg.value : '#ffffff');
-  }
-  set bgOverrideColor(v: string) {
-    this.updateSection({ backgroundOverride: { type: 'color', value: v } });
+  setWidth(width: SectionWidth): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.setSectionWidth(row.id, section.id, width);
   }
 
-  onBgImageFile(event: Event): void {
+  toggleEnabled(): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.toggleSectionEnabled(row.id, section.id);
+  }
+
+  setBgNone(): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, { backgroundOverride: null });
+  }
+
+  setBgColor(value: string): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, { backgroundOverride: { type: 'color', value } });
+  }
+
+  setBgImage(event: Event): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      this.updateSection({ backgroundOverride: { type: 'image', value: reader.result as string } });
+      this.es.updateSection(row.id, section.id, { backgroundOverride: { type: 'image', value: reader.result as string } });
     };
     reader.readAsDataURL(file);
   }
 
   deleteSection(): void {
-    const s = this.section();
-    if (s) this.es.deleteSection(s.id);
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.removeSectionFromRow(row.id, section.id);
+    this.es.selectSection(null);
   }
 
-  onCarouselImageUpload(event: Event): void {
+  // ─── Carousel ────────────────────────────────────────────────
+
+  get carouselImages() {
+    return (this.section()?.carouselImages ?? []).slice().sort((a, b) => a.order - b.order);
+  }
+
+  get carouselCfg(): CarouselConfig {
+    return this.section()?.carouselConfig ?? {
+      scrollMode: 'click', autoScrollInterval: 3, showFocusedCenter: true,
+      largeImageHeight: 400, thumbnailHeight: 80, thumbnailWidth: 120, visibleThumbnails: 6,
+    };
+  }
+
+  getImageAtSlot(slotIndex: number) {
+    return this.carouselImages.find(img => img.order === slotIndex) ?? null;
+  }
+
+  uploadAll(event: Event): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    const input = event.target as HTMLInputElement;
-    const files = input.files;
-    const s = this.section();
-    if (files && s) this.es.addCarouselImages(s.id, files);
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+    this.es.addCarouselImages(row.id, section.id, files);
+  }
+
+  onSlotClick(slotIndex: number): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.pendingSlotIndex.set(slotIndex);
+    if (this.slotInput?.nativeElement) {
+      this.slotInput.nativeElement.value = '';
+      this.slotInput.nativeElement.click();
+    }
+  }
+
+  onSlotFileSelected(event: Event): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    const slotIndex = this.pendingSlotIndex();
+    if (slotIndex === null) return;
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.es.addCarouselImageAtSlot(row.id, section.id, slotIndex, file);
+    this.pendingSlotIndex.set(null);
   }
 
   removeCarouselImage(imageId: string): void {
-    const s = this.section();
-    if (s) this.es.removeCarouselImage(s.id, imageId);
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.removeCarouselImage(row.id, section.id, imageId);
   }
 
-  get carouselImages() {
-    return [...(this.section()?.carouselImages ?? [])].sort((a, b) => a.order - b.order);
+  updateScrollMode(mode: 'auto' | 'click' | 'both'): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateCarouselConfig(row.id, section.id, { scrollMode: mode });
   }
 
-  get scrollMode(): string { return this.section()?.carouselConfig?.scrollMode ?? 'click'; }
-  set scrollMode(v: string) {
-    const s = this.section();
-    if (s) this.es.updateCarouselConfig(s.id, { scrollMode: v as any });
-  }
-
-  get autoInterval(): number { return this.section()?.carouselConfig?.autoScrollInterval ?? 3000; }
-  set autoInterval(v: number) {
-    const s = this.section();
-    if (s) this.es.updateCarouselConfig(s.id, { autoScrollInterval: Number(v) * 1000 });
-  }
-
-  get showFocusedCenter(): boolean { return this.section()?.carouselConfig?.showFocusedCenter ?? true; }
-  set showFocusedCenter(v: boolean) {
-    const s = this.section();
-    if (s) this.es.updateCarouselConfig(s.id, { showFocusedCenter: v });
+  updateCarouselField(field: keyof CarouselConfig, value: number | boolean): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateCarouselConfig(row.id, section.id, { [field]: value });
   }
 
   updateCaption(imageId: string, caption: string): void {
-    const s = this.section();
-    if (!s) return;
-    const imgs = (s.carouselImages ?? []).map(img => img.id === imageId ? { ...img, caption } : img);
-    this.es.updateSection(s.id, { carouselImages: imgs });
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, {
+      carouselImages: (section.carouselImages ?? []).map(img =>
+        img.id === imageId ? { ...img, caption } : img),
+    });
   }
 
-  private updateSection(changes: Partial<Section>): void {
-    const s = this.section();
-    if (s) this.es.updateSection(s.id, changes);
+  // ─── Custom settings helpers ──────────────────────────────────
+
+  getCustom(key: string, def: unknown = undefined): unknown {
+    return this.section()?.customSettings?.[key] ?? def;
+  }
+
+  setCustom(key: string, value: unknown): void {
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    this.es.updateSection(row.id, section.id, {
+      customSettings: { ...(section.customSettings ?? {}), [key]: value },
+    });
+  }
+
+  // FAQ helpers
+  get faqItems(): FaqItem[] { return (this.getCustom('faqItems', []) as FaqItem[]); }
+
+  addFaqItem(): void {
+    this.setCustom('faqItems', [...this.faqItems, { question: 'Question?', answer: 'Answer...' }]);
+  }
+
+  updateFaqItem(index: number, field: 'question' | 'answer', value: string): void {
+    const items = [...this.faqItems];
+    items[index] = { ...items[index], [field]: value };
+    this.setCustom('faqItems', items);
+  }
+
+  deleteFaqItem(index: number): void {
+    const items = this.faqItems.filter((_, i) => i !== index);
+    this.setCustom('faqItems', items);
+  }
+
+  // Agenda helpers
+  get agendaItems(): AgendaItem[] { return (this.getCustom('agendaItems', []) as AgendaItem[]); }
+
+  addAgendaItem(): void {
+    this.setCustom('agendaItems', [...this.agendaItems, { time: '9:00 AM', title: 'Session Title', speaker: '' }]);
+  }
+
+  updateAgendaItem(index: number, field: keyof AgendaItem, value: string): void {
+    const items = [...this.agendaItems];
+    items[index] = { ...items[index], [field]: value };
+    this.setCustom('agendaItems', items);
+  }
+
+  deleteAgendaItem(index: number): void {
+    this.setCustom('agendaItems', this.agendaItems.filter((_, i) => i !== index));
+  }
+
+  // Pricing helpers
+  get pricingTiers(): PricingTier[] { return (this.getCustom('pricingTiers', [{ name: 'Basic', price: '0', currency: '$', features: '', cta: 'Get Started' }]) as PricingTier[]); }
+
+  updatePricingField(index: number, field: keyof PricingTier, value: string): void {
+    const tiers = [...this.pricingTiers];
+    tiers[index] = { ...tiers[index], [field]: value };
+    this.setCustom('pricingTiers', tiers);
+  }
+
+  setPricingCount(count: number): void {
+    const current = this.pricingTiers;
+    const newTiers: PricingTier[] = Array.from({ length: count }, (_, i) =>
+      current[i] ?? { name: `Tier ${i + 1}`, price: '0', currency: '$', features: '', cta: 'Sign Up' });
+    this.setCustom('pricingTiers', newTiers);
+  }
+
+  // Gallery
+  uploadGalleryImages(event: Event): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const { row, section } = this.getRowAndSection();
+    if (!row || !section) return;
+    const files = (event.target as HTMLInputElement).files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const existing = (this.getCustom('galleryImages', []) as string[]);
+        this.setCustom('galleryImages', [...existing, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  removeGalleryImage(index: number): void {
+    const imgs = (this.getCustom('galleryImages', []) as string[]).filter((_, i) => i !== index);
+    this.setCustom('galleryImages', imgs);
+  }
+
+  get galleryImages(): string[] { return this.getCustom('galleryImages', []) as string[]; }
+
+  // Element drag from mini panel
+  onElementDragStart(event: DragEvent, type: string): void {
+    event.dataTransfer?.setData('elementType', type);
+  }
+
+  // ─── Helper ──────────────────────────────────────────────────
+
+  private getRowAndSection(): { row: Row | null; section: Section | null } {
+    return { row: this.row(), section: this.section() };
   }
 }

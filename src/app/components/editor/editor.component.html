@@ -1,79 +1,174 @@
+<!-- ══ PREVIEW MODE ════════════════════════════════════════════════════ -->
 @if (es.isPreviewMode()) {
-  <button type="button" class="exit-preview-btn" (click)="togglePreview()">&#10005; Exit Preview</button>
-  <div class="preview-overlay">
-    <div class="preview-page">
+  <button type="button" class="exit-preview-btn" (click)="togglePreview()">✕ Exit Preview</button>
 
-      @if (es.activeHeader().enabled) {
-        <div class="pv-header"
-             [style.height.px]="es.activeHeader().height"
-             [ngStyle]="previewHeaderStyle()">
-          <div class="pv-header-inner">
-            @if (es.activeHeader().logoSrc) {
-              <img class="pv-logo"
-                   [src]="es.activeHeader().logoSrc"
-                   [style.width.px]="es.activeHeader().logoWidth"
-                   [style.height.px]="es.activeHeader().logoHeight"
-                   alt="Logo" />
-            } @else {
-              <div class="pv-logo-ph">Logo</div>
+  <div class="preview-container">
+
+    <!-- Header -->
+    @if (es.activeHeader().enabled) {
+      <div class="pv-header" [ngStyle]="previewHeaderStyle()" [style.height.px]="es.activeHeader().height">
+        <div class="pv-header-inner">
+          @if (es.activeHeader().logoSrc) {
+            <div class="pv-logo-wrap"
+                 [style.width.px]="es.activeHeader().logoWidth"
+                 [style.height.px]="es.activeHeader().logoHeight">
+              <img [src]="es.activeHeader().logoSrc" alt="Logo"
+                   style="width:100%;height:100%;object-fit:contain;display:block;" />
+            </div>
+          } @else {
+            <div class="pv-logo-ph">Logo</div>
+          }
+          <nav class="pv-nav">
+            @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+              @if (nl.visible) {
+                <span [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
+              }
             }
-            <nav class="pv-nav">
-              @for (nl of es.activeHeader().navLinks; track nl.pageId) {
-                @if (nl.visible) {
-                  <span [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
+          </nav>
+        </div>
+      </div>
+    }
+
+    <!-- Page content -->
+    <div class="pv-page" [ngStyle]="previewPageStyle()">
+
+      <!-- Free elements -->
+      <div class="pv-free-elements">
+        @for (el of es.elements(); track el.id) {
+          <div [ngStyle]="previewElementStyle(el)">
+            @switch (el.type) {
+              @case ('text') {
+                <div style="width:100%;height:100%;display:flex;align-items:center;padding:4px;word-break:break-word;overflow:hidden;">
+                  {{ el.content }}
+                </div>
+              }
+              @case ('button') {
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                  <a href="#" class="pv-btn"
+                     [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                     [style.color]="es.resolveColor(el.styles, 'color')"
+                     [style.borderRadius.px]="el.styles?.borderRadius ?? 0"
+                     (click)="$event.preventDefault()">{{ el.content }}</a>
+                </div>
+              }
+              @case ('image') {
+                @if (el.src) {
+                  <div style="width:100%;height:100%;overflow:hidden;display:block;">
+                    <img [src]="el.src" alt=""
+                         style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;flex-shrink:0;" />
+                  </div>
                 }
               }
-            </nav>
-          </div>
-        </div>
-      }
-
-      <div class="pv-canvas" [ngStyle]="previewPageStyle()">
-        @for (el of es.elements(); track el.id) {
-          <div class="pv-element" [ngStyle]="previewElementStyle(el)">
-            @if (el.type === 'text') { <span>{{ el.content }}</span> }
-            @if (el.type === 'button') { <div class="pv-btn">{{ el.content }}</div> }
-            @if (el.type === 'image' && el.src) {
-              <img class="pv-img" [src]="el.src" alt="Image" />
+              @case ('shape') {
+                <div style="width:100%;height:100%;"
+                     [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                     [style.borderRadius.px]="el.styles?.borderRadius ?? 0"></div>
+              }
+              @case ('divider') {
+                <div style="width:100%;height:100%;display:flex;align-items:center;">
+                  <hr style="width:100%;height:2px;border:none;"
+                      [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')" />
+                </div>
+              }
             }
           </div>
         }
       </div>
 
-      @for (sec of es.sections(); track sec.id) {
-        @if (sec.enabled) {
-          <div class="pv-section" [style.height.px]="sec.height">
-            <span class="pv-section-label">{{ sec.label }}</span>
-          </div>
-        }
-      }
+      <!-- Rows -->
+      @for (row of es.rows(); track row.id) {
+        <div class="pv-row">
+          @for (section of row.sections; track section.id) {
+            @if (section.enabled) {
+              <div class="pv-section"
+                   [class]="'pv-section-' + section.width"
+                   [style.height.px]="section.height"
+                   [ngStyle]="previewSectionBg(section)">
 
-      @if (es.activeFooter().enabled) {
-        <div class="pv-footer"
-             [style.height.px]="es.activeFooter().height"
-             [ngStyle]="previewFooterStyle()">
-          <div class="pv-footer-inner">
-            <nav class="pv-nav">
-              @for (nl of es.activeFooter().navLinks; track nl.pageId) {
-                @if (nl.visible) {
-                  <span [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
+                @if (section.type === 'carousel') {
+                  <app-carousel-preview [section]="section" [rowId]="row.id" />
+                } @else {
+                  <!-- Section elements -->
+                  @for (el of section.elements; track el.id) {
+                    <div [ngStyle]="previewElementStyle(el)">
+                      @switch (el.type) {
+                        @case ('text') {
+                          <div style="width:100%;height:100%;display:flex;align-items:center;padding:4px;word-break:break-word;overflow:hidden;">
+                            {{ el.content }}
+                          </div>
+                        }
+                        @case ('button') {
+                          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                            <a href="#" class="pv-btn"
+                               [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                               [style.color]="es.resolveColor(el.styles, 'color')"
+                               [style.borderRadius.px]="el.styles?.borderRadius ?? 0"
+                               (click)="$event.preventDefault()">{{ el.content }}</a>
+                          </div>
+                        }
+                        @case ('image') {
+                          @if (el.src) {
+                            <div style="width:100%;height:100%;overflow:hidden;display:block;">
+                              <img [src]="el.src" alt=""
+                                   style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;flex-shrink:0;" />
+                            </div>
+                          }
+                        }
+                        @case ('shape') {
+                          <div style="width:100%;height:100%;"
+                               [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                               [style.borderRadius.px]="el.styles?.borderRadius ?? 0"></div>
+                        }
+                        @case ('divider') {
+                          <div style="width:100%;height:100%;display:flex;align-items:center;">
+                            <hr style="width:100%;height:2px;border:none;"
+                                [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')" />
+                          </div>
+                        }
+                      }
+                    </div>
+                  }
                 }
-              }
-            </nav>
-            <span class="pv-copy" [style.color]="es.activeFooter().defaultColor">
-              {{ es.activeFooter().copyrightText }}
-            </span>
-          </div>
+              </div>
+            }
+          }
         </div>
       }
 
     </div>
+
+    <!-- Footer -->
+    @if (es.activeFooter().enabled) {
+      <div class="pv-footer" [ngStyle]="previewFooterStyle()" [style.height.px]="es.activeFooter().height">
+        <div class="pv-footer-inner">
+          @if (es.activeFooter().logoSrc) {
+            <div style="height:32px;width:auto;overflow:hidden;display:block;flex-shrink:0;">
+              <img [src]="es.activeFooter().logoSrc" alt="Logo"
+                   style="height:100%;width:auto;object-fit:contain;display:block;" />
+            </div>
+          }
+          <nav class="pv-nav">
+            @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+              @if (nl.visible) {
+                <span [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
+              }
+            }
+          </nav>
+          <span class="pv-copy" [style.color]="es.activeFooter().defaultColor">
+            {{ es.activeFooter().copyrightText }}
+          </span>
+        </div>
+      </div>
+    }
+
   </div>
 }
 
+<!-- ══ EDITOR MODE ════════════════════════════════════════════════════ -->
 @if (!es.isPreviewMode()) {
   <div class="editor-shell">
 
+    <!-- Toolbar -->
     <header class="toolbar">
       <span class="logo">Envlor</span>
 
@@ -81,8 +176,7 @@
         @for (page of es.pages(); track page.id) {
           @if (renamingPageId() === page.id) {
             <input type="text" class="tab-rename-input"
-                   title="Page name"
-                   placeholder="Page name"
+                   title="Page name" placeholder="Page name"
                    [value]="renameValue"
                    (input)="renameValue = $any($event.target).value"
                    (blur)="confirmRename(page.id)"
@@ -117,34 +211,42 @@
       </div>
     </header>
 
+    <!-- Body -->
     <div class="editor-body">
 
+      <!-- Left panel -->
       <aside class="left-panel">
         @if (es.editingMode() === 'page') {
           <app-elements-panel />
         }
         @if (es.editingMode() === 'header') {
-          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">&#8592; Back to Pages</button>
+          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">← Back</button>
           <app-header-editor />
         }
         @if (es.editingMode() === 'footer') {
-          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">&#8592; Back to Pages</button>
+          <button type="button" class="back-btn" (click)="es.setEditingMode('page')">← Back</button>
           <app-footer-editor />
         }
       </aside>
 
+      <!-- Canvas -->
       <main class="canvas-area">
         <app-canvas />
-        <app-json-panel />
       </main>
 
+      <!-- Right panel -->
       <aside class="right-panel">
         <app-settings-panel />
       </aside>
 
     </div>
+
+    <!-- JSON panel -->
+    <app-json-panel />
+
   </div>
 
+  <!-- Context menu -->
   @if (contextMenu()) {
     <div class="ctx-backdrop" (click)="closeContextMenu()"></div>
     <div class="context-menu"

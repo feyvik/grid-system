@@ -1,175 +1,211 @@
 <div class="settings-panel">
 
-  @if (es.selectedSection()) {
-    <app-section-editor />
-  } @else {
+  <div class="tab-bar">
+    <button type="button" class="tab-btn" [class.active]="activeTab() === 'element'"
+            (click)="activeTab.set('element')">Element</button>
+    <button type="button" class="tab-btn" [class.active]="activeTab() === 'page'"
+            (click)="activeTab.set('page')">Page</button>
+    <button type="button" class="tab-btn" [class.active]="activeTab() === 'colors'"
+            (click)="activeTab.set('colors')">Colors</button>
+  </div>
 
-    <div class="tab-bar">
-      <button type="button" class="tab-btn"
-              [class.active]="activeTab() === 'element'"
-              (click)="activeTab.set('element')">Element</button>
-      <button type="button" class="tab-btn"
-              [class.active]="activeTab() === 'page'"
-              (click)="activeTab.set('page')">Page</button>
-      <button type="button" class="tab-btn"
-              [class.active]="activeTab() === 'colors'"
-              (click)="activeTab.set('colors')">Colors</button>
-    </div>
+  <div class="tab-content">
 
-    <!-- ── ELEMENT TAB ───────────────────────────────── -->
+    <!-- ══ ELEMENT TAB ══════════════════════════════════════ -->
     @if (activeTab() === 'element') {
-      @if (el; as elem) {
-        <div class="settings-content">
-          <div class="type-badge">{{ elem.type }}</div>
+      @if (selectedElement(); as el) {
 
-          @if (elem.type === 'text' || elem.type === 'button') {
-            <div class="form-group">
-              <label>Content</label>
-              <input type="text"
-                     [value]="elem.content ?? ''"
-                     (input)="updateContent($any($event.target).value)"
-                     placeholder="Enter content…"
-                     title="Element content" />
-            </div>
-          }
+        <!-- Context indicator -->
+        @if (contextLabel(); as ctx) {
+          <div class="context-label">{{ ctx }}</div>
+        }
 
-          @if (elem.type === 'image') {
-            <div class="form-group">
-              <label>Image</label>
-              <button type="button" class="upload-btn" (click)="triggerImageUpload()">
-                {{ elem.src ? 'Change Image' : 'Upload Image' }}
-              </button>
-            </div>
-          }
+        <!-- Type pill -->
+        <div class="el-type-badge">{{ el.type }}</div>
 
-          @if (elem.type !== 'divider' && elem.type !== 'shape') {
-            <div class="form-group">
-              <label>Font Size (px)</label>
-              <input type="number" [(ngModel)]="fontSize" min="8" max="96" step="1" title="Font size" />
-            </div>
-          }
-
-          <div class="form-group">
-            <label>Text Color</label>
-            <div class="color-row">
-              <input type="color" [(ngModel)]="color" title="Text color" />
-              <span class="color-value">{{ color }}</span>
-            </div>
+        <!-- Content (text / button only) -->
+        @if (el.type === 'text' || el.type === 'button') {
+          <div class="field-group">
+            <label class="field-label">Content</label>
+            <textarea class="field-textarea"
+                      [value]="el.content ?? ''"
+                      (input)="updateElementField({ content: $any($event.target).value })"></textarea>
           </div>
+        }
 
-          <div class="form-group">
-            <label>Background Color</label>
-            <div class="color-row">
-              <input type="color" [(ngModel)]="backgroundColor" title="Background color" />
-              <span class="color-value">{{ backgroundColor }}</span>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Border Radius (px)</label>
-            <input type="number" [(ngModel)]="borderRadius" min="0" max="100" step="1" title="Border radius" />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group half">
-              <label>W (grid)</label>
-              <input type="number" [(ngModel)]="elWidth" min="2" max="30" title="Width in grid units" />
-            </div>
-            <div class="form-group half">
-              <label>H (grid)</label>
-              <input type="number" [(ngModel)]="elHeight" min="2" max="30" title="Height in grid units" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group half">
-              <label>X</label>
-              <input type="number" [(ngModel)]="elX" min="0" title="X position" />
-            </div>
-            <div class="form-group half">
-              <label>Y</label>
-              <input type="number" [(ngModel)]="elY" min="0" title="Y position" />
-            </div>
-          </div>
-
-          <button type="button" class="delete-btn" (click)="deleteCurrentElement()">Delete Element</button>
+        <!-- Font size -->
+        <div class="field-group">
+          <label class="field-label">Font Size (px)</label>
+          <input type="number" class="field-input" min="8" max="120"
+                 [value]="el.styles?.fontSize ?? 16"
+                 (input)="updateStyles({ fontSize: +$any($event.target).value })" />
         </div>
+
+        <!-- Text Color -->
+        <div class="field-group">
+          <label class="field-label">Text Color</label>
+          <select class="field-input"
+                  [value]="el.styles?.useGlobalColor ?? ''"
+                  (change)="setColorToken('useGlobalColor', $any($event.target).value || null)">
+            <option value="">Fixed Color</option>
+            @for (key of colorKeys; track key) {
+              <option [value]="key">{{ colorLabels[key] }} ({{ resolvedColorPreview(key) }})</option>
+            }
+          </select>
+          @if (!el.styles?.useGlobalColor) {
+            <input type="color" class="color-input"
+                   [value]="el.styles?.color ?? '#000000'"
+                   (input)="setFixedColor('color', $any($event.target).value)" />
+          } @else {
+            <div class="color-swatch" [style.backgroundColor]="resolvedColorPreview(el.styles!.useGlobalColor!)">
+              <span>Using: {{ colorLabels[el.styles!.useGlobalColor!] }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Background Color -->
+        <div class="field-group">
+          <label class="field-label">Background Color</label>
+          <select class="field-input"
+                  [value]="el.styles?.useGlobalBackground ?? ''"
+                  (change)="setColorToken('useGlobalBackground', $any($event.target).value || null)">
+            <option value="">Fixed Color</option>
+            @for (key of colorKeys; track key) {
+              <option [value]="key">{{ colorLabels[key] }} ({{ resolvedColorPreview(key) }})</option>
+            }
+          </select>
+          @if (!el.styles?.useGlobalBackground) {
+            <input type="color" class="color-input"
+                   [value]="el.styles?.backgroundColor && el.styles.backgroundColor !== 'transparent' ? el.styles.backgroundColor : '#ffffff'"
+                   (input)="setFixedColor('backgroundColor', $any($event.target).value)" />
+          } @else {
+            <div class="color-swatch" [style.backgroundColor]="resolvedColorPreview(el.styles!.useGlobalBackground!)">
+              <span>Using: {{ colorLabels[el.styles!.useGlobalBackground!] }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Border radius -->
+        <div class="field-group">
+          <label class="field-label">Border Radius (px)</label>
+          <input type="number" class="field-input" min="0" max="200"
+                 [value]="el.styles?.borderRadius ?? 0"
+                 (input)="updateStyles({ borderRadius: +$any($event.target).value })" />
+        </div>
+
+        <!-- Dimensions -->
+        <div class="two-col">
+          <div class="field-group">
+            <label class="field-label">Width (grid)</label>
+            <input type="number" class="field-input" min="1"
+                   [value]="el.width"
+                   (input)="updateElementField({ width: Math.max(2, +$any($event.target).value) })" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Height (grid)</label>
+            <input type="number" class="field-input" min="1"
+                   [value]="el.height"
+                   (input)="updateElementField({ height: Math.max(2, +$any($event.target).value) })" />
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="field-group">
+            <label class="field-label">X (grid)</label>
+            <input type="number" class="field-input" min="0"
+                   [value]="el.x"
+                   (input)="updateElementField({ x: +$any($event.target).value })" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Y (grid)</label>
+            <input type="number" class="field-input" min="0"
+                   [value]="el.y"
+                   (input)="updateElementField({ y: +$any($event.target).value })" />
+          </div>
+        </div>
+
+        <button type="button" class="delete-btn" (click)="deleteElement()">🗑 Delete Element</button>
+
       } @else {
-        <div class="empty-state">Select an element on the canvas to edit its properties.</div>
+        <div class="empty-hint">Select an element to edit its properties</div>
       }
     }
 
-    <!-- ── PAGE TAB ──────────────────────────────────── -->
+    <!-- ══ PAGE TAB ═══════════════════════════════════════════ -->
     @if (activeTab() === 'page') {
-      <div class="settings-content">
-        <div class="form-group">
-          <label>Page Title</label>
-          <input type="text" [(ngModel)]="pageTitle" placeholder="Page title" title="Page title" />
+      @if (activePage(); as page) {
+
+        <div class="field-group">
+          <label class="field-label">Page Title</label>
+          <input type="text" class="field-input" [value]="page.title"
+                 (input)="updatePageTitle($any($event.target).value)" />
         </div>
-        <div class="form-group">
-          <label>Slug</label>
-          <input type="text" [(ngModel)]="pageSlug" placeholder="page-slug" title="URL slug" />
+
+        <div class="field-group">
+          <label class="field-label">Slug</label>
+          <input type="text" class="field-input" [value]="page.slug"
+                 (input)="updatePageSlug($any($event.target).value)" />
         </div>
-        <div class="form-group toggle-row">
-          <label>Visible to visitors</label>
-          <button type="button" class="toggle-btn"
-                  [class.on]="activePage().enabled"
-                  (click)="es.togglePageEnabled(activePage().id)">
-            {{ activePage().enabled ? 'On' : 'Off' }}
-          </button>
+
+        <div class="field-group field-row">
+          <label class="field-label">Visible to visitors</label>
+          <input type="checkbox" [checked]="page.enabled"
+                 (change)="es.togglePageEnabled(page.id)" />
         </div>
-        <div class="form-group">
-          <label>Background</label>
-          <div class="bg-type-row">
-            <button type="button" class="bg-type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Color</button>
-            <button type="button" class="bg-type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
+
+        <div class="field-group">
+          <label class="field-label">Background</label>
+          <div class="radio-row">
+            <label><input type="radio" name="pagebg" [checked]="page.background.type === 'color'"
+                          (change)="updatePageBackground('color', page.background.value)" /> Color</label>
+            <label><input type="radio" name="pagebg" [checked]="page.background.type === 'image'"
+                          (change)="updatePageBackground('image', page.background.value)" /> Image</label>
           </div>
-          @if (bgType === 'color') {
-            <div class="color-row color-row--mt">
-              <input type="color" [(ngModel)]="bgColor" title="Page background color" />
-              <span class="color-value">{{ bgColor }}</span>
-            </div>
-          }
-          @if (bgType === 'image') {
-            <input type="file" accept="image/*" class="file-input file-input--mt"
-                   title="Background image" aria-label="Background image"
-                   (change)="onBgImageFile($event)" />
+          @if (page.background.type === 'color') {
+            <input type="color" class="color-input"
+                   [value]="page.background.value"
+                   (input)="updatePageBackground('color', $any($event.target).value)" />
+          } @else {
+            <input type="file" accept="image/*" (change)="onPageBgImageUpload($event)" />
+            @if (page.background.value) {
+              <div class="bg-image-preview">
+                <div class="img-container" style="width:100%;height:60px;overflow:hidden;">
+                  <img [src]="page.background.value" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                </div>
+              </div>
+            }
           }
         </div>
-        <div class="page-actions">
-          <button type="button" class="action-btn" (click)="duplicatePage()">Duplicate Page</button>
-          <button type="button" class="delete-btn"
+
+        <div class="action-btns">
+          <button type="button" class="action-btn" (click)="es.duplicatePage(page.id)">⎘ Duplicate</button>
+          <button type="button" class="action-btn danger-btn"
                   [disabled]="es.pages().length <= 1"
-                  (click)="deletePage()">Delete Page</button>
+                  (click)="es.deletePage(page.id)">🗑 Delete Page</button>
         </div>
-      </div>
+
+      }
     }
 
-    <!-- ── GLOBAL COLORS TAB ─────────────────────────── -->
+    <!-- ══ COLORS TAB ══════════════════════════════════════════ -->
     @if (activeTab() === 'colors') {
-      <div class="settings-content">
-        <p class="colors-subtitle">These defaults apply to all elements unless overridden individually.</p>
-        @for (c of colorKeys; track c.key) {
-          <div class="form-group">
-            <label>{{ c.label }}</label>
-            <div class="color-row">
-              <input type="color" title="Global color"
-                     [attr.aria-label]="c.label + ' color'"
-                     [value]="getColor(c.key)"
-                     (input)="setColor(c.key, $any($event.target).value)" />
-              <input type="text"
-                     title="Hex value"
-                     [attr.aria-label]="c.label + ' hex'"
-                     [value]="getColor(c.key)"
-                     (change)="setColor(c.key, $any($event.target).value)"
-                     maxlength="7"
-                     placeholder="#000000"
-                     class="hex-input" />
-            </div>
+      <div class="colors-heading">Global Colors</div>
+      <p class="colors-subtitle">Applied to all elements using a color token</p>
+
+      @for (key of colorKeys; track key) {
+        <div class="color-row">
+          <span class="color-name">{{ colorLabels[key] }}</span>
+          <div class="color-controls">
+            <div class="color-swatch-small" [style.backgroundColor]="es.globalColors()[key]"></div>
+            <input type="color" class="color-input"
+                   [value]="es.globalColors()[key]"
+                   (input)="es.updateGlobalColor(key, $any($event.target).value)" />
+            <input type="text" class="hex-input"
+                   [value]="es.globalColors()[key]"
+                   (change)="es.updateGlobalColor(key, $any($event.target).value)" />
           </div>
-        }
-      </div>
+        </div>
+      }
     }
 
-  }
-
+  </div>
 </div>

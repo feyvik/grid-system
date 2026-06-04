@@ -1,47 +1,50 @@
-@if (!images.length) {
-  <div class="carousel-empty" (click)="onCarouselClick($event)">
-    <span class="carousel-empty-icon">&#9638;</span>
-    <span>No images yet — select this section to upload</span>
+<div class="carousel-wrap"
+     (mouseenter)="isHovered.set(true)"
+     (mouseleave)="isHovered.set(false)">
+
+  <!-- Large image area -->
+  <div class="large-image-area"
+       [style.height.px]="cfg.largeImageHeight">
+    @if (largeImageSrc()) {
+      <div class="large-img-container">
+        <img [src]="largeImageSrc()!" alt="" class="large-img" />
+      </div>
+    } @else {
+      <div class="large-img-placeholder">
+        <span class="placeholder-icon">🖼</span>
+        <span>No images yet — upload from the section editor</span>
+      </div>
+    }
+
+    <!-- Arrows -->
+    <button type="button" class="arrow arrow-left" (click)="previousImage()">‹</button>
+    <button type="button" class="arrow arrow-right" (click)="nextImage()">›</button>
   </div>
-} @else if (config.showFocusedCenter) {
-  <div class="carousel-focused" (click)="onCarouselClick($event)">
-    <div class="carousel-main">
-      @if (focusedImage; as fi) {
-        <img class="carousel-main-img"
-             [src]="fi.src"
-             [alt]="fi.caption || ('Slide ' + (focusedIndex() + 1))"
-             [title]="fi.caption || ('Slide ' + (focusedIndex() + 1))" />
-      }
-      <button type="button" class="carousel-arrow carousel-arrow--left"
-              (click)="prev(); $event.stopPropagation()">&#8249;</button>
-      <button type="button" class="carousel-arrow carousel-arrow--right"
-              (click)="next(); $event.stopPropagation()">&#8250;</button>
-    </div>
-    <div class="carousel-thumbs">
-      @for (img of images; track img.id; let i = $index) {
-        <img class="carousel-thumb"
-             [class.active]="focusedIndex() === i"
-             [src]="img.src"
-             [alt]="img.caption || ('Thumb ' + (i + 1))"
-             [title]="img.caption || ('Thumb ' + (i + 1))"
-             (click)="setFocused(i); $event.stopPropagation()" />
-      }
-    </div>
+
+  <!-- Thumbnail strip -->
+  <div class="thumbnail-strip">
+    @for (thumb of visibleThumbnails(); track thumb.idx) {
+      <div class="thumbnail-slot"
+           [style.width.px]="cfg.thumbnailWidth"
+           [style.height.px]="cfg.thumbnailHeight"
+           [class.thumb-active]="isThumbnailActive(thumb.idx)"
+           (click)="setFocused(thumb.idx)">
+        @if (thumb.image) {
+          <img [src]="thumb.image.src" alt="" class="thumb-img" />
+        } @else {
+          <div class="thumb-placeholder">
+            <span>🖼</span>
+          </div>
+        }
+      </div>
+    }
   </div>
-} @else {
-  <div class="carousel-strip" (click)="onCarouselClick($event)">
-    <button type="button" class="carousel-arrow carousel-arrow--left"
-            (click)="prev(); $event.stopPropagation()">&#8249;</button>
-    <div class="carousel-strip-inner">
-      @for (img of images; track img.id; let i = $index) {
-        <img class="carousel-strip-img"
-             [src]="img.src"
-             [alt]="img.caption || ('Slide ' + (i + 1))"
-             [title]="img.caption || ('Slide ' + (i + 1))"
-             [class.active]="focusedIndex() === i" />
-      }
+
+  <!-- Editor mode hover overlay -->
+  @if (!es.isPreviewMode() && isHovered()) {
+    <div class="edit-overlay" (click)="onEditCarouselClick($event)">
+      <span>✏ Edit Carousel</span>
     </div>
-    <button type="button" class="carousel-arrow carousel-arrow--right"
-            (click)="next(); $event.stopPropagation()">&#8250;</button>
-  </div>
-}
+  }
+
+</div>

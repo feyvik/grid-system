@@ -1,169 +1,343 @@
 <input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
+<input #sectionFileInput type="file" accept="image/*" hidden (change)="onSectionFileSelected($event)" />
 
-<div class="canvas-outer">
+<div class="canvas-outer" (click)="onCanvasClick()">
 
+  <!-- ══ HEADER ══════════════════════════════════════════════════ -->
   @if (es.activeHeader().enabled) {
     <div class="header-bar"
          [ngStyle]="headerStyle()"
          [style.height.px]="es.activeHeader().height"
-         (click)="clickHeader()">
+         [class.header-editing]="headerContentMode() !== 'none'">
       <div class="header-inner">
-        @if (es.activeHeader().logoSrc) {
-          <img class="header-logo"
-               [src]="es.activeHeader().logoSrc"
-               [style.width.px]="es.activeHeader().logoWidth"
-               [style.height.px]="es.activeHeader().logoHeight"
-               alt="Logo" />
-        } @else {
-          <div class="logo-placeholder">Logo</div>
-        }
-        <nav class="header-nav">
-          @for (nl of es.activeHeader().navLinks; track nl.pageId) {
-            @if (nl.visible) {
-              <span class="nav-link" [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
-            }
+        <div class="header-zone"
+             [class.zone-active]="headerContentMode() === 'logo'"
+             [class]="'zone-align-' + es.activeHeader().logoAlignment"
+             (click)="onHeaderLogoClick($event)">
+          @if (es.activeHeader().logoSrc) {
+            <div class="img-container" [style.width.px]="es.activeHeader().logoWidth" [style.height.px]="es.activeHeader().logoHeight">
+              <img [src]="es.activeHeader().logoSrc" alt="Logo" class="fill-img" />
+            </div>
+          } @else {
+            <div class="logo-placeholder">Logo</div>
           }
-        </nav>
+          @if (headerContentMode() === 'logo') {
+            <div class="align-popup" (click)="$event.stopPropagation()">
+              @for (a of alignOptions; track a) {
+                <button type="button" class="align-btn"
+                        [class.active]="es.activeHeader().logoAlignment === a"
+                        (click)="setHeaderLogoAlignment(a)">{{ a }}</button>
+              }
+            </div>
+          }
+        </div>
+        <div class="header-zone header-nav-zone"
+             [class.zone-active]="headerContentMode() === 'nav'"
+             [class]="'zone-align-' + es.activeHeader().navAlignment"
+             (click)="onHeaderNavClick($event)">
+          <nav class="header-nav">
+            @for (nl of es.activeHeader().navLinks; track nl.pageId) {
+              @if (nl.visible) {
+                <span class="nav-link" [style.color]="es.activeHeader().defaultColor">{{ nl.label }}</span>
+              }
+            }
+          </nav>
+          @if (headerContentMode() === 'nav') {
+            <div class="align-popup" (click)="$event.stopPropagation()">
+              @for (a of alignOptions; track a) {
+                <button type="button" class="align-btn"
+                        [class.active]="es.activeHeader().navAlignment === a"
+                        (click)="setHeaderNavAlignment(a)">{{ a }}</button>
+              }
+            </div>
+          }
+        </div>
       </div>
-      <div class="locked-overlay">
-        <span class="lock-icon">&#128274;</span>
-        <span>Click to edit Header</span>
-      </div>
+      @if (headerContentMode() !== 'none') {
+        <div class="edit-tooltip">Editing Header</div>
+      }
+      <div class="height-handle" title="Drag to resize" (mousedown)="onHeaderHeightMouseDown($event)"></div>
     </div>
   }
 
-  <div class="canvas-surface"
+  <!-- ══ FREE ELEMENTS ZONE ══════════════════════════════════════ -->
+  <div class="elements-area"
+       [style.minHeight.px]="elementsAreaHeight()"
        [ngStyle]="pageBgStyle()"
-       (dragover)="onCanvasDragOver($event)"
-       (dragleave)="onCanvasDragLeave($event)"
-       (drop)="onCanvasDrop($event)"
-       (click)="onCanvasClick()">
+       [class.show-grid]="es.showGrid()"
+       (dragover)="onElementsAreaDragOver($event)"
+       (dragleave)="onElementsAreaDragLeave($event)"
+       (drop)="onElementsAreaDrop($event)"
+       (click)="$event.stopPropagation(); onCanvasClick()">
 
-    @if (es.showGrid()) {
-      <div class="grid-overlay"></div>
+    @if (!es.elements().length) {
+      <div class="elements-empty-hint">Drop elements here</div>
     }
 
-    <div class="elements-area" [style.minHeight.px]="elementsAreaHeight()">
-      @for (el of es.elements(); track el.id) {
-        <div class="canvas-el"
-             [ngStyle]="getElementStyle(el)"
-             [ngClass]="{ 'selected': es.selectedElementId() === el.id }"
-             draggable="true"
-             (dragstart)="onElementDragStart($event, el)"
-             (click)="onElementClick($event, el.id)">
+    @for (el of es.elements(); track el.id) {
+      <div class="canvas-element"
+           [ngStyle]="getElementStyle(el)"
+           [class.selected]="isFreeElementSelected(el.id)"
+           draggable="true"
+           (dragstart)="onFreeElementDragStart($event, el)"
+           (click)="onFreeElementClick($event, el.id)">
 
-          @if (el.type === 'text') {
-            <span class="el-text">{{ el.content }}</span>
-          }
-          @if (el.type === 'button') {
-            <div class="el-btn">{{ el.content }}</div>
-          }
-          @if (el.type === 'image') {
-            @if (el.src) {
-              <img class="el-img" [src]="el.src" alt="Image element" />
-            } @else {
-              <div class="el-img-placeholder"><span>&#9638;</span><span>Image</span></div>
-            }
-          }
-          @if (el.type === 'shape') {
-            <div class="el-shape-fill"></div>
-          }
-          @if (el.type === 'divider') {
-            <hr class="el-divider-line" />
-          }
-
-          @if (isContentEmpty(el)) {
-            <div class="empty-dot"></div>
-          }
-
-          @if (es.selectedElementId() === el.id) {
-            <div class="el-type-label">{{ el.type }}</div>
-            @for (h of handles; track h) {
-              <div class="resize-handle"
-                   [ngClass]="'handle-' + h"
-                   (mousedown)="onHandleMouseDown($event, el, h)"></div>
-            }
-          }
-        </div>
-      }
-    </div>
-
-    @for (sec of es.sections(); track sec.id; let i = $index) {
-      @if (isDraggingSection() && es.dragInsertIndex() === i) {
-        <div class="insert-indicator"></div>
-      }
-
-      <div class="section-block"
-           [ngClass]="{ 'sec-selected': es.selectedSectionId() === sec.id, 'sec-disabled': !sec.enabled }"
-           [style.height.px]="sec.height"
-           [ngStyle]="sectionBgStyle(sec)"
-           (click)="onSectionClick($event, sec.id)">
-
-        <div class="sec-header-bar" (click)="$event.stopPropagation()">
-          <span class="sec-drag-handle" title="Drag to reorder">&#9776;</span>
-          <span class="sec-label">{{ sec.label }}</span>
-          <div class="sec-actions">
-            <button type="button" class="sec-btn" title="Edit section" (click)="onSectionEdit($event, sec.id)">&#9998;</button>
-            <button type="button" class="sec-btn" [title]="sec.enabled ? 'Hide' : 'Show'"
-                    (click)="onSectionToggle($event, sec.id)">
-              {{ sec.enabled ? '&#128065;' : '&#128683;' }}
-            </button>
-            <button type="button" class="sec-btn sec-btn--del" title="Delete"
-                    (click)="onSectionDelete($event, sec.id)">&#10005;</button>
-          </div>
-        </div>
-
-        @if (!sec.enabled) {
-          <div class="sec-disabled-overlay">Hidden</div>
+        @if (isFreeElementSelected(el.id)) {
+          <div class="el-type-pill">{{ el.type }}</div>
         }
 
-        <div class="sec-body" [style.height.px]="sec.height - 32">
-          @if (sec.type === 'carousel') {
-            <app-carousel-preview [section]="sec" />
-          } @else {
-            <div class="sec-placeholder">
-              <span class="sec-placeholder-text">{{ sec.label }}</span>
+        @switch (el.type) {
+          @case ('text') {
+            <div class="el-text">{{ el.content }}</div>
+          }
+          @case ('button') {
+            <div class="el-button-wrap">
+              <button type="button" class="el-button"
+                      [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                      [style.color]="es.resolveColor(el.styles, 'color')"
+                      [style.borderRadius.px]="el.styles?.borderRadius ?? 0">
+                {{ el.content }}
+              </button>
+            </div>
+          }
+          @case ('image') {
+            @if (el.src) {
+              <div class="img-container fill-container">
+                <img [src]="el.src" alt="" class="fill-img" />
+              </div>
+            } @else {
+              <div class="img-placeholder" (click)="onImagePlaceholderClick($event, el)">
+                <span>🖼</span>
+                <span>Click to add image</span>
+              </div>
+            }
+          }
+          @case ('shape') {
+            <div class="el-shape"
+                 [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                 [style.borderRadius.px]="el.styles?.borderRadius ?? 0"></div>
+          }
+          @case ('divider') {
+            <div class="el-divider-wrap">
+              <hr class="el-divider" [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')" />
+            </div>
+          }
+        }
+
+        @if (isContentEmpty(el)) {
+          <div class="empty-dot"></div>
+        }
+
+        @if (isFreeElementSelected(el.id)) {
+          @for (handle of handles; track handle) {
+            <div class="resize-handle" [class]="'handle-' + handle"
+                 (mousedown)="onFreeHandleMouseDown($event, el, handle)"></div>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ══ ROWS ZONE ═══════════════════════════════════════════════ -->
+  <div class="rows-zone"
+       (dragover)="onRowsDragOver($event)"
+       (drop)="onRowsDrop($event)">
+
+    @for (row of es.rows(); track row.id; let rowIdx = $index) {
+
+      @if (isDraggingSection() && es.dragInsertIndex() === rowIdx) {
+        <div class="row-insert-indicator"></div>
+      }
+
+      <div class="canvas-row" [class.row-dragging]="draggingExistingRowId() === row.id">
+
+        <div class="row-controls">
+          <div class="row-handle" draggable="true" title="Drag to reorder"
+               (dragstart)="onRowHandleDragStart($event, row)">≡</div>
+          <button type="button" class="row-delete-btn" title="Delete row"
+                  (click)="onRowDelete($event, row.id)">×</button>
+        </div>
+
+        <div class="row-sections">
+          @for (section of row.sections; track section.id) {
+            <div class="canvas-section"
+                 [class]="sectionWidthClass(section)"
+                 [class.section-selected]="es.selectedSectionId() === section.id"
+                 [class.section-disabled]="!section.enabled"
+                 [class.section-hover-add]="hoverRowId() === row.id">
+
+              <div class="section-bar">
+                <span class="section-drag-handle">⠿</span>
+                <span class="section-label">{{ section.label }}</span>
+                <div class="section-bar-actions">
+                  <button type="button" class="sec-width-btn" [class.active]="section.width === 'full'"
+                          (click)="$event.stopPropagation(); es.setSectionWidth(row.id, section.id, 'full')">Full</button>
+                  <button type="button" class="sec-width-btn" [class.active]="section.width === 'half'"
+                          (click)="$event.stopPropagation(); es.setSectionWidth(row.id, section.id, 'half')">½</button>
+                  <button type="button" class="sec-width-btn" [class.active]="section.width === 'third'"
+                          (click)="$event.stopPropagation(); es.setSectionWidth(row.id, section.id, 'third')">⅓</button>
+                  <button type="button" class="sec-icon-btn" title="Edit"
+                          (click)="onSectionEdit($event, section.id)">✏</button>
+                  <button type="button" class="sec-icon-btn" title="Toggle"
+                          (click)="onSectionToggle($event, row.id, section.id)">{{ section.enabled ? '👁' : '🚫' }}</button>
+                  <button type="button" class="sec-icon-btn sec-delete-btn" title="Delete"
+                          (click)="onSectionDelete($event, row.id, section.id)">×</button>
+                </div>
+              </div>
+
+              <div class="section-body"
+                   [style.height.px]="section.height"
+                   [ngStyle]="sectionBgStyle(section)"
+                   [class.show-grid]="es.showGrid()"
+                   (click)="onSectionClick($event, section.id)"
+                   (dragover)="onSectionBodyDragOver($event, row.id)"
+                   (dragleave)="onSectionBodyDragLeave($event, row.id)"
+                   (drop)="onSectionBodyDrop($event, row, section)">
+
+                @if (!section.elements.length && section.type !== 'carousel') {
+                  <div class="section-empty-hint">Drop elements here</div>
+                }
+
+                @if (section.type === 'carousel') {
+                  <app-carousel-preview [section]="section" [rowId]="row.id" />
+                } @else {
+                  @for (el of section.elements; track el.id) {
+                    <div class="canvas-element"
+                         [ngStyle]="getElementStyle(el)"
+                         [class.selected]="isSectionElementSelected(el.id)"
+                         draggable="true"
+                         (dragstart)="onSectionElementDragStart($event, el)"
+                         (click)="onSectionElementClick($event, el, row.id, section.id)">
+
+                      @if (isSectionElementSelected(el.id)) {
+                        <div class="el-type-pill">{{ el.type }}</div>
+                      }
+
+                      @switch (el.type) {
+                        @case ('text') { <div class="el-text">{{ el.content }}</div> }
+                        @case ('button') {
+                          <div class="el-button-wrap">
+                            <button type="button" class="el-button"
+                                    [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                                    [style.color]="es.resolveColor(el.styles, 'color')"
+                                    [style.borderRadius.px]="el.styles?.borderRadius ?? 0">{{ el.content }}</button>
+                          </div>
+                        }
+                        @case ('image') {
+                          @if (el.src) {
+                            <div class="img-container fill-container">
+                              <img [src]="el.src" alt="" class="fill-img" />
+                            </div>
+                          } @else {
+                            <div class="img-placeholder"
+                                 (click)="onSectionImagePlaceholderClick($event, el, row.id, section.id)">
+                              <span>🖼</span><span>Click to add</span>
+                            </div>
+                          }
+                        }
+                        @case ('shape') {
+                          <div class="el-shape"
+                               [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')"
+                               [style.borderRadius.px]="el.styles?.borderRadius ?? 0"></div>
+                        }
+                        @case ('divider') {
+                          <div class="el-divider-wrap">
+                            <hr class="el-divider" [style.backgroundColor]="es.resolveColor(el.styles, 'backgroundColor')" />
+                          </div>
+                        }
+                      }
+
+                      @if (isContentEmpty(el)) { <div class="empty-dot"></div> }
+
+                      @if (isSectionElementSelected(el.id)) {
+                        @for (handle of handles; track handle) {
+                          <div class="resize-handle" [class]="'handle-' + handle"
+                               (mousedown)="onSectionHandleMouseDown($event, el, handle, row.id, section.id)"></div>
+                        }
+                      }
+                    </div>
+                  }
+                }
+
+                <div class="section-height-handle"
+                     title="Drag to resize height"
+                     (mousedown)="onSectionHeightMouseDown($event, row, section)"></div>
+              </div>
             </div>
           }
         </div>
       </div>
     }
 
-    @if (isDraggingSection() && es.dragInsertIndex() === es.sections().length) {
-      <div class="insert-indicator"></div>
+    @if (isDraggingSection() && es.dragInsertIndex() === es.rows().length) {
+      <div class="row-insert-indicator"></div>
     }
 
-    @if (!es.sections().length && !es.elements().length) {
-      <div class="canvas-empty-hint">
-        Drag elements or sections from the left panel to start building
+    @if (!es.rows().length) {
+      <div class="rows-empty-hint">
+        Drag sections from the left panel to build your page layout
       </div>
     }
   </div>
 
+  <!-- ══ FOOTER ══════════════════════════════════════════════════ -->
   @if (es.activeFooter().enabled) {
     <div class="footer-bar"
          [ngStyle]="footerStyle()"
          [style.height.px]="es.activeFooter().height"
-         (click)="clickFooter()">
+         [class.footer-editing]="footerContentMode() !== 'none'">
       <div class="footer-inner">
-        @if (es.activeFooter().logoSrc) {
-          <img class="footer-logo" [src]="es.activeFooter().logoSrc" alt="Footer logo" />
-        }
-        <nav class="footer-nav">
-          @for (nl of es.activeFooter().navLinks; track nl.pageId) {
-            @if (nl.visible) {
-              <span class="nav-link" [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
-            }
+        <div class="footer-zone"
+             [class.zone-active]="footerContentMode() === 'logo'"
+             [class]="'zone-align-' + es.activeFooter().logoAlignment"
+             (click)="onFooterLogoClick($event)">
+          @if (es.activeFooter().logoSrc) {
+            <div class="img-container" style="height:40px;width:auto;overflow:hidden;">
+              <img [src]="es.activeFooter().logoSrc" alt="Logo" style="height:100%;width:auto;object-fit:contain;display:block;" />
+            </div>
+          } @else {
+            <div class="logo-placeholder" style="color:#fff">Logo</div>
           }
-        </nav>
-        <span class="footer-copy" [style.color]="es.activeFooter().defaultColor">
-          {{ es.activeFooter().copyrightText }}
-        </span>
+          @if (footerContentMode() === 'logo') {
+            <div class="align-popup" (click)="$event.stopPropagation()">
+              @for (a of alignOptions; track a) {
+                <button type="button" class="align-btn" [class.active]="es.activeFooter().logoAlignment === a"
+                        (click)="setFooterLogoAlignment(a)">{{ a }}</button>
+              }
+            </div>
+          }
+        </div>
+        <div class="footer-zone footer-nav-zone"
+             [class.zone-active]="footerContentMode() === 'nav'"
+             [class]="'zone-align-' + es.activeFooter().navAlignment"
+             (click)="onFooterNavClick($event)">
+          <nav class="footer-nav">
+            @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+              @if (nl.visible) {
+                <span class="nav-link" [style.color]="es.activeFooter().defaultColor">{{ nl.label }}</span>
+              }
+            }
+          </nav>
+          @if (footerContentMode() === 'nav') {
+            <div class="align-popup" (click)="$event.stopPropagation()">
+              @for (a of alignOptions; track a) {
+                <button type="button" class="align-btn" [class.active]="es.activeFooter().navAlignment === a"
+                        (click)="setFooterNavAlignment(a)">{{ a }}</button>
+              }
+            </div>
+          }
+        </div>
+        <div class="footer-zone footer-copy-zone"
+             [class.zone-active]="footerContentMode() === 'copyright'"
+             (click)="onFooterCopyrightClick($event)">
+          <span [style.color]="es.activeFooter().defaultColor">{{ es.activeFooter().copyrightText }}</span>
+        </div>
       </div>
-      <div class="locked-overlay">
-        <span class="lock-icon">&#128274;</span>
-        <span>Click to edit Footer</span>
-      </div>
+      @if (footerContentMode() !== 'none') {
+        <div class="edit-tooltip">Editing Footer</div>
+      }
+      <div class="height-handle height-handle--top" title="Drag to resize"
+           (mousedown)="onFooterHeightMouseDown($event)"></div>
     </div>
   }
 

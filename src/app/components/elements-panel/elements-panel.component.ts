@@ -1,12 +1,14 @@
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { EditorService } from '../../services/editor.service';
-import type { ElementType, GlobalColors, SectionType } from '../../models/page.model';
+import { SectionEditorComponent } from '../section-editor/section-editor.component';
+import type { GlobalColors } from '../../models/page.model';
 
 @Component({
   selector: 'app-elements-panel',
   standalone: true,
-  imports: [],
+  imports: [FormsModule, SectionEditorComponent],
   templateUrl: './elements-panel.component.html',
   styleUrl: './elements-panel.component.css',
 })
@@ -14,54 +16,44 @@ export class ElementsPanelComponent {
   protected es = inject(EditorService);
   private platformId = inject(PLATFORM_ID);
 
-  readonly elementItems: { type: ElementType; label: string; icon: string }[] = [
+  readonly elementItems = [
     { type: 'text', label: 'Text', icon: 'T' },
-    { type: 'image', label: 'Image', icon: '&#9638;' },
-    { type: 'button', label: 'Button', icon: '&#9644;' },
-    { type: 'shape', label: 'Shape', icon: '&#9632;' },
-    { type: 'divider', label: 'Divider', icon: '&#8212;' },
-  ];
+    { type: 'image', label: 'Image', icon: '🖼' },
+    { type: 'button', label: 'Button', icon: '▭' },
+    { type: 'shape', label: 'Shape', icon: '◼' },
+    { type: 'divider', label: 'Divider', icon: '—' },
+  ] as const;
 
-  readonly sectionItems: { type: SectionType; label: string; icon: string }[] = [
-    { type: 'blank', label: 'Blank', icon: '&#9633;' },
-    { type: 'speaker-cards', label: 'Speaker Cards', icon: '&#9678;' },
-    { type: 'carousel', label: 'Carousel', icon: '&#9655;' },
-    { type: 'gallery', label: 'Gallery', icon: '&#9638;' },
-    { type: 'faq', label: 'FAQ', icon: '?' },
-    { type: 'pricing-cards', label: 'Pricing Cards', icon: '&#9672;' },
-    { type: 'attendees', label: 'Attendees', icon: '&#9689;' },
-    { type: 'agenda', label: 'Agenda', icon: '&#8801;' },
-  ];
+  readonly sectionItems = [
+    { type: 'blank', label: 'Blank' },
+    { type: 'speaker-cards', label: 'Speaker Cards' },
+    { type: 'carousel', label: 'Carousel' },
+    { type: 'gallery', label: 'Gallery' },
+    { type: 'faq', label: 'FAQ' },
+    { type: 'pricing-cards', label: 'Pricing Cards' },
+    { type: 'attendees', label: 'Attendees' },
+    { type: 'agenda', label: 'Agenda' },
+  ] as const;
 
-  readonly colorKeys: { key: keyof GlobalColors; label: string }[] = [
-    { key: 'primary', label: 'Primary' },
-    { key: 'secondary', label: 'Secondary' },
-    { key: 'accent1', label: 'Accent 1' },
-    { key: 'accent2', label: 'Accent 2' },
-    { key: 'accent3', label: 'Accent 3' },
-    { key: 'accent4', label: 'Accent 4' },
-  ];
+  readonly colorKeys: (keyof GlobalColors)[] = ['primary', 'secondary', 'accent1', 'accent2', 'accent3', 'accent4'];
+  readonly colorLabels: Record<keyof GlobalColors, string> = {
+    primary: 'Primary', secondary: 'Secondary',
+    accent1: 'Accent 1', accent2: 'Accent 2', accent3: 'Accent 3', accent4: 'Accent 4',
+  };
 
-  onElementDragStart(event: DragEvent, type: ElementType): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+  onElementDragStart(event: DragEvent, type: string): void {
     event.dataTransfer?.setData('elementType', type);
   }
 
-  onSectionDragStart(event: DragEvent, type: SectionType): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+  onSectionDragStart(event: DragEvent, type: string): void {
     event.dataTransfer?.setData('sectionType', type);
-    event.dataTransfer?.setData('sectiontype', type);
   }
 
   addCustomSection(): void {
-    this.es.addSection('custom');
+    this.es.addSectionAsNewRow('custom', this.es.rows().length);
   }
 
-  getColor(key: keyof GlobalColors): string {
-    return this.es.globalColors()[key];
-  }
-
-  setColor(key: keyof GlobalColors, value: string): void {
+  updateColor(key: keyof GlobalColors, value: string): void {
     this.es.updateGlobalColor(key, value);
   }
 }

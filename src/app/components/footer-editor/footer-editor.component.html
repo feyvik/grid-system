@@ -1,162 +1,111 @@
-<input #logoInput type="file" accept="image/*" class="hidden-input" title="Upload logo" aria-label="Upload logo" (change)="onLogoFile($event)" />
-<input #bgImageInput type="file" accept="image/*" class="hidden-input" title="Background image" aria-label="Background image" (change)="onBgImageFile($event)" />
-<input #fileInput type="file" accept="image/*" class="hidden-input" title="Upload image" aria-label="Upload image" (change)="onFileSelected($event)" />
+<input #logoInput type="file" accept="image/*" hidden (change)="onLogoFile($event)" />
+<input #bgInput type="file" accept="image/*" hidden (change)="onBgFile($event)" />
 
 <div class="footer-editor">
 
-  <!-- Live preview + mini canvas -->
-  <div class="canvas-section">
-    <div class="canvas-label">Footer Canvas — drag elements from the left panel</div>
-    <div
-      class="footer-mini-canvas"
-      [ngStyle]="getFooterCanvasBg()"
-      [style.minHeight.px]="footerCanvasHeight()"
-      (dragover)="onDragOver($event)"
-      (drop)="onDrop($event)"
-      (click)="onCanvasClick()"
-    >
-      @if (editorService.showGrid()) {
-        <div class="grid-overlay"></div>
+  <!-- Live preview -->
+  <div class="preview-bar" [ngStyle]="previewStyle()" [style.height.px]="es.activeFooter().height">
+    <div class="preview-inner">
+      @if (es.activeFooter().logoSrc) {
+        <div style="height:32px;width:auto;overflow:hidden;display:block;flex-shrink:0;">
+          <img [src]="es.activeFooter().logoSrc" alt="Logo"
+               style="height:100%;width:auto;object-fit:contain;display:block;" />
+        </div>
+      } @else {
+        <span class="preview-logo-ph">Logo</span>
       }
+      <nav class="preview-nav">
+        @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+          @if (nl.visible) {
+            <span [style.color]="es.activeFooter().defaultColor" class="preview-link">{{ nl.label }}</span>
+          }
+        }
+      </nav>
+      <span [style.color]="es.activeFooter().defaultColor" class="preview-copy">
+        {{ es.activeFooter().copyrightText }}
+      </span>
+    </div>
+    @if (!es.activeFooter().enabled) {
+      <div class="hidden-overlay">Footer hidden</div>
+    }
+  </div>
 
-      <!-- Footer nav preview (top-left in canvas) -->
-      <div class="canvas-nav-preview">
-        @for (nl of footer.navLinks; track nl.pageId) {
-          <span class="canvas-nav-link" [style.color]="defaultColor">{{ nl.label }}</span>
-        }
-        @if (footer.copyrightText) {
-          <span class="canvas-nav-copy" [style.color]="defaultColor">{{ footer.copyrightText }}</span>
-        }
+  <div class="settings">
+
+    <div class="field-row">
+      <label class="field-label">Show Footer</label>
+      <input type="checkbox" [checked]="es.activeFooter().enabled" (change)="toggleEnabled()" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Height (px)</label>
+      <input type="number" class="field-input" min="40" max="300"
+             [value]="es.activeFooter().height"
+             (input)="es.updateFooter({ height: +$any($event.target).value })" />
+    </div>
+
+    <div class="section-heading">Background</div>
+    <div class="radio-row">
+      <label><input type="radio" name="fbg" [checked]="es.activeFooter().background.type === 'color'"
+                    (change)="setBgColor(es.activeFooter().background.value || '#313136')" /> Color</label>
+      <label><input type="radio" name="fbg" [checked]="es.activeFooter().background.type === 'image'"
+                    (change)="bgInput.nativeElement.click()" /> Image</label>
+    </div>
+    @if (es.activeFooter().background.type === 'color') {
+      <input type="color" class="color-input"
+             [value]="es.activeFooter().background.value"
+             (input)="setBgColor($any($event.target).value)" />
+    }
+
+    <div class="section-heading">Logo</div>
+    @if (es.activeFooter().logoSrc) {
+      <div class="logo-preview">
+        <div style="height:32px;width:auto;overflow:hidden;display:block;">
+          <img [src]="es.activeFooter().logoSrc" alt="Logo"
+               style="height:100%;width:auto;object-fit:contain;display:block;" />
+        </div>
+        <button type="button" class="remove-btn" (click)="removeLogo()">Remove</button>
       </div>
+    } @else {
+      <button type="button" class="upload-btn" (click)="logoInput.nativeElement.click()">⬆ Upload Logo</button>
+    }
 
-      @for (el of footerElements(); track el.id) {
-        <div
-          class="canvas-element"
-          [class.selected]="selectedFooterElementId() === el.id"
-          [ngStyle]="getElementStyle(el)"
-          draggable="true"
-          (dragstart)="onElementDragStart($event, el)"
-          (click)="onElementClick($event, el.id)"
-        >
-          @if (el.type === 'text') {
-            <span class="el-text">{{ el.content }}</span>
-          } @else if (el.type === 'button') {
-            <span class="el-button">{{ el.content }}</span>
-          } @else if (el.type === 'image') {
-            @if (el.src) {
-              <img class="el-img" [src]="el.src" alt="Footer image" />
-            } @else {
-              <div class="el-image-placeholder">▦ Image</div>
-            }
-          }
-          @if (selectedFooterElementId() === el.id) {
-            <div class="el-type-label">{{ el.type }}</div>
-          }
+    <div class="section-heading">Copyright</div>
+    <div class="field-group">
+      <label class="field-label">Copyright Text</label>
+      <input type="text" class="field-input"
+             [value]="es.activeFooter().copyrightText"
+             (input)="es.updateFooter({ copyrightText: $any($event.target).value })" />
+    </div>
+
+    <div class="section-heading">Navigation Links</div>
+    <div class="nav-links-list">
+      @for (nl of es.activeFooter().navLinks; track nl.pageId) {
+        <div class="nav-link-row">
+          <input type="checkbox" [checked]="nl.visible"
+                 (change)="es.updateFooter({ navLinks: es.activeFooter().navLinks.map(n => n.pageId === nl.pageId ? { ...n, visible: $any($event.target).checked } : n) })" />
+          <span class="nav-page-title">{{ es.pages().find(p => p.id === nl.pageId)?.title ?? nl.label }}</span>
+          <input type="text" class="nav-label-input" placeholder="Override..."
+                 [value]="nl.label"
+                 (input)="es.updateFooter({ navLinks: es.activeFooter().navLinks.map(n => n.pageId === nl.pageId ? { ...n, label: $any($event.target).value } : n) })" />
         </div>
       }
     </div>
-  </div>
 
-  <!-- Edit panel -->
-  <div class="edit-panel">
-
-    <!-- Background -->
-    <section class="edit-section">
-      <h3 class="section-title">Background</h3>
-      <div class="radio-row">
-        <button type="button" class="type-btn" [class.active]="bgType === 'color'" (click)="selectBgType('color')">Solid Color</button>
-        <button type="button" class="type-btn" [class.active]="bgType === 'image'" (click)="selectBgType('image')">Image</button>
+    <div class="two-col">
+      <div class="field-group">
+        <label class="field-label">Active Color</label>
+        <input type="color" class="color-input"
+               [value]="es.activeFooter().activeColor"
+               (input)="es.updateFooter({ activeColor: $any($event.target).value })" />
       </div>
-      @if (bgType === 'color') {
-        <div class="color-row">
-          <input type="color" [(ngModel)]="bgColor" title="Background color" />
-          <span class="color-hex">{{ bgColor }}</span>
-        </div>
-      } @else {
-        <input type="file" accept="image/*" class="file-input" title="Background image" aria-label="Background image" (change)="onBgImageFile($event)" />
-      }
-    </section>
-
-    <!-- Logo -->
-    <section class="edit-section">
-      <h3 class="section-title">Logo</h3>
-      <button type="button" class="action-btn" (click)="triggerLogoUpload()">
-        {{ footer.logoSrc ? 'Change Logo' : 'Upload Logo' }}
-      </button>
-      @if (footer.logoSrc) {
-        <div class="logo-preview-row">
-          <img [src]="footer.logoSrc" class="logo-thumb" alt="Footer logo preview" />
-          <button type="button" class="remove-btn" (click)="removeLogo()">Remove</button>
-        </div>
-      }
-    </section>
-
-    <!-- Copyright -->
-    <section class="edit-section">
-      <h3 class="section-title">Copyright</h3>
-      <input
-        type="text"
-        [(ngModel)]="copyrightText"
-        placeholder="© 2024 Your Company"
-        class="text-input"
-        title="Copyright text"
-      />
-    </section>
-
-    <!-- Navigation -->
-    <section class="edit-section">
-      <h3 class="section-title">Navigation</h3>
-      <div class="nav-list">
-        @for (page of editorService.pages(); track page.id) {
-          <div class="nav-row">
-            <input
-              type="checkbox"
-              [id]="'fn-' + page.id"
-              [checked]="isPageInNav(page.id)"
-              (change)="toggleNavPage(page.id)"
-            />
-            <label [for]="'fn-' + page.id" class="nav-page-title">{{ page.title }}</label>
-            @if (isPageInNav(page.id)) {
-              <input
-                type="text"
-                class="nav-label-input"
-                [value]="getNavLabel(page.id)"
-                (input)="setNavLabel(page.id, $any($event.target).value)"
-                placeholder="Label"
-                title="Navigation label"
-              />
-            }
-          </div>
-        }
+      <div class="field-group">
+        <label class="field-label">Default Color</label>
+        <input type="color" class="color-input"
+               [value]="es.activeFooter().defaultColor"
+               (input)="es.updateFooter({ defaultColor: $any($event.target).value })" />
       </div>
-      <div class="form-row color-row-section">
-        <div class="form-group">
-          <label>Active Color</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="activeColor" title="Active link color" />
-            <span class="color-hex">{{ activeColor }}</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Default Color</label>
-          <div class="color-row">
-            <input type="color" [(ngModel)]="defaultColor" title="Default link color" />
-            <span class="color-hex">{{ defaultColor }}</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Visibility -->
-    <section class="edit-section">
-      <h3 class="section-title">Visibility</h3>
-      <div class="toggle-row">
-        <span>Show footer on all pages</span>
-        <button type="button" class="toggle-btn" [class.on]="enabled" (click)="toggleEnabled()">
-          {{ enabled ? 'On' : 'Off' }}
-        </button>
-      </div>
-    </section>
+    </div>
 
   </div>
 </div>
